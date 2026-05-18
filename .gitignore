@@ -1,0 +1,16 @@
+# Dependencies
+**/node_modules/
+
+# Front-end build output (Vite, etc.)
+**/dist/
+
+# Local environment (never commit secrets)
+**/.env
+**/.env.local
+**/.env.*.local
+
+.DS_Store
+*.log
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
