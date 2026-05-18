@@ -19,7 +19,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="dark light">
     <script>window.__drupalBasePath="{{ drupal_base_path|e('js') }}";</script>
-    <link rel="stylesheet" href="{{ mga2p2_form_dist_url }}/assets/style.css?v={{ mga2p2_form_style_version }}">
+    <link rel="stylesheet" href="{{ mga2p2_form_dist_url }}/assets/style.css?v={{ mga2p2_form_assets_version }}">
     <css-placeholder token="{{ placeholder_token }}">
     <js-placeholder token="{{ placeholder_token }}">
   </head>
@@ -27,7 +27,7 @@
     <a href="#main-content" class="visually-hidden focusable skip-link">{{ 'Skip to main content'|t }}</a>
     {{ page }}
     {{ page_bottom }}
-    <script type="module" src="{{ mga2p2_form_dist_url }}/assets/index.js"></script>
+    <script type="module" src="{{ mga2p2_form_dist_url }}/assets/index.js?v={{ mga2p2_form_assets_version }}"></script>
     <js-bottom-placeholder token="{{ placeholder_token }}">
   </body>
 </html>

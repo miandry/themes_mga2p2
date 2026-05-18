@@ -13,6 +13,11 @@ function mga2p2Form_preprocess_html(array &$variables): void {
   $variables['drupal_base_path'] = base_path();
   $path = \Drupal::service('extension.list.theme')->getPath('mga2p2Form');
   $variables['mga2p2_form_dist_url'] = rtrim(base_path(), '/') . '/' . $path . '/dist';
-  $css_abs = \Drupal::root() . '/' . $path . '/dist/assets/style.css';
-  $variables['mga2p2_form_style_version'] = is_readable($css_abs) ? (string) filemtime($css_abs) : '0';
+  $root = \Drupal::root() . '/' . $path . '/dist/assets';
+  $css_abs = $root . '/style.css';
+  $js_abs = $root . '/index.js';
+  $mt_css = is_readable($css_abs) ? filemtime($css_abs) : 0;
+  $mt_js = is_readable($js_abs) ? filemtime($js_abs) : 0;
+  // Same query on CSS + JS so a partial cache cannot pair old JS (data-v-*) with new CSS.
+  $variables['mga2p2_form_assets_version'] = (string) max($mt_css, $mt_js);
 }
