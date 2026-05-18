@@ -1,0 +1,118 @@
+/* Binance P2P color palette */
+:root {
+  --p2p-yellow: #F0B90B;
+  --p2p-yellow-rgb: 240, 185, 11;
+  --p2p-green: #0ECB81;
+  --p2p-red: #F6465D;
+  --p2p-bg: #0B0E11;
+  --p2p-bg-secondary: #1E2329;
+  --p2p-bg-card: #2B3139;
+  --p2p-text: #EAECEF;
+  --p2p-text-secondary: #848E9C;
+  --p2p-border: #2B3139;
+
+  /** primary — Binance yellow **/
+  --ion-color-primary: #F0B90B;
+  --ion-color-primary-rgb: 240, 185, 11;
+  --ion-color-primary-contrast: #000000;
+  --ion-color-primary-contrast-rgb: 0, 0, 0;
+  --ion-color-primary-shade: #d4a30a;
+  --ion-color-primary-tint: #f2c023;
+
+  /** secondary — green (buy) **/
+  --ion-color-secondary: #0ECB81;
+  --ion-color-secondary-rgb: 14, 203, 129;
+  --ion-color-secondary-contrast: #ffffff;
+  --ion-color-secondary-contrast-rgb: 255, 255, 255;
+  --ion-color-secondary-shade: #0cb271;
+  --ion-color-secondary-tint: #26d08e;
+
+  /** tertiary **/
+  --ion-color-tertiary: #3375BB;
+  --ion-color-tertiary-rgb: 51, 117, 187;
+  --ion-color-tertiary-contrast: #ffffff;
+  --ion-color-tertiary-contrast-rgb: 255, 255, 255;
+  --ion-color-tertiary-shade: #2d67a5;
+  --ion-color-tertiary-tint: #4783c2;
+
+  /** success **/
+  --ion-color-success: #0ECB81;
+  --ion-color-success-rgb: 14, 203, 129;
+  --ion-color-success-contrast: #ffffff;
+  --ion-color-success-contrast-rgb: 255, 255, 255;
+  --ion-color-success-shade: #0cb271;
+  --ion-color-success-tint: #26d08e;
+
+  /** warning **/
+  --ion-color-warning: #F0B90B;
+  --ion-color-warning-rgb: 240, 185, 11;
+  --ion-color-warning-contrast: #000000;
+  --ion-color-warning-contrast-rgb: 0, 0, 0;
+  --ion-color-warning-shade: #d4a30a;
+  --ion-color-warning-tint: #f2c023;
+
+  /** danger — red (sell / cancel) **/
+  --ion-color-danger: #F6465D;
+  --ion-color-danger-rgb: 246, 70, 93;
+  --ion-color-danger-contrast: #ffffff;
+  --ion-color-danger-contrast-rgb: 255, 255, 255;
+  --ion-color-danger-shade: #d93e53;
+  --ion-color-danger-tint: #f7596d;
+
+  /** dark **/
+  --ion-color-dark: #0B0E11;
+  --ion-color-dark-rgb: 11, 14, 17;
+  --ion-color-dark-contrast: #ffffff;
+  --ion-color-dark-contrast-rgb: 255, 255, 255;
+  --ion-color-dark-shade: #090c0f;
+  --ion-color-dark-tint: #232629;
+
+  /** medium **/
+  --ion-color-medium: #848E9C;
+  --ion-color-medium-rgb: 132, 142, 156;
+  --ion-color-medium-contrast: #ffffff;
+  --ion-color-medium-contrast-rgb: 255, 255, 255;
+  --ion-color-medium-shade: #747d89;
+  --ion-color-medium-tint: #909aa6;
+
+  /** light **/
+  --ion-color-light: #2B3139;
+  --ion-color-light-rgb: 43, 49, 57;
+  --ion-color-light-contrast: #EAECEF;
+  --ion-color-light-contrast-rgb: 234, 236, 239;
+  --ion-color-light-shade: #262c33;
+  --ion-color-light-tint: #40464d;
+}
+
+body {
+  --ion-background-color: #0B0E11;
+  --ion-background-color-rgb: 11, 14, 17;
+  --ion-text-color: #EAECEF;
+  --ion-text-color-rgb: 234, 236, 239;
+  --ion-border-color: #2B3139;
+  --ion-item-background: #1E2329;
+  --ion-toolbar-background: #0B0E11;
+  --ion-tab-bar-background: #1E2329;
+  --ion-card-background: #1E2329;
+}
+
+.ios body {
+  --ion-background-color: #0B0E11;
+  --ion-background-color-rgb: 11, 14, 17;
+  --ion-text-color: #EAECEF;
+  --ion-text-color-rgb: 234, 236, 239;
+  --ion-item-background: #1E2329;
+  --ion-card-background: #1E2329;
+}
+
+.md body {
+  --ion-background-color: #0B0E11;
+  --ion-background-color-rgb: 11, 14, 17;
+  --ion-text-color: #EAECEF;
+  --ion-text-color-rgb: 234, 236, 239;
+  --ion-border-color: #2B3139;
+  --ion-item-background: #1E2329;
+  --ion-toolbar-background: #0B0E11;
+  --ion-tab-bar-background: #1E2329;
+  --ion-card-background: #1E2329;
+}

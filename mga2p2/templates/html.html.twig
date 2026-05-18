@@ -1,0 +1,40 @@
+{#
+/**
+ * @file
+ * Theme override for the basic structure of a single Drupal page.
+ *
+ * Delegates rendering entirely to the Vue/Ionic SPA built in P2PApp/.
+ */
+#}
+{%
+  set body_classes = [
+    logged_in ? 'user-logged-in',
+    not root_path ? 'path-frontpage' : 'path-' ~ root_path|clean_class,
+    node_type ? 'page-node-type-' ~ node_type|clean_class,
+    db_offline ? 'db-offline',
+  ]
+%}
+<!DOCTYPE html>
+<html{{ html_attributes }}>
+  <head>
+    <head-placeholder token="{{ placeholder_token }}">
+    <title>{{ head_title|safe_join(' | ') }}</title>
+    <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="color-scheme" content="dark light">
+    {# P2PApp fetch() must prefix API paths with this when Drupal lives in a subdirectory. #}
+    <script>window.__drupalBasePath="{{ drupal_base_path|e('js') }}";</script>
+    {# Same base as the module script: avoids broken URLs when CSS aggregation or library paths differ. #}
+    <link rel="stylesheet" href="{{ mga2p2_dist_url }}/assets/style.css?v={{ mga2p2_style_version }}">
+    <css-placeholder token="{{ placeholder_token }}">
+    <js-placeholder token="{{ placeholder_token }}">
+  </head>
+  <body{{ attributes.addClass(body_classes) }}>
+    <a href="#main-content" class="visually-hidden focusable skip-link">
+      {{ 'Skip to main content'|t }}
+    </a>
+    {{ page }}
+    {{ page_bottom }}
+    <script type="module" src="{{ mga2p2_dist_url }}/assets/index.js"></script>
+    <js-bottom-placeholder token="{{ placeholder_token }}">
+  </body>
+</html>

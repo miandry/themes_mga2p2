@@ -1,0 +1,144 @@
+/* Global P2P app styles */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: #0B0E11;
+  color: #EAECEF;
+}
+
+/* ── Utility classes ─────────────────────────────────────── */
+.text-buy   { color: #0ECB81 !important; }
+.text-sell  { color: #F6465D !important; }
+.text-warn  { color: #F0B90B !important; }
+.text-muted { color: #848E9C !important; }
+.text-white { color: #EAECEF !important; }
+
+.bg-card    { background: #1E2329; }
+.bg-deep    { background: #0B0E11; }
+
+/* ── Card ────────────────────────────────────────────────── */
+.p2p-card {
+  background: #1E2329;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 1px solid #2B3139;
+}
+
+/* ── Chip badges ─────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.badge-buy       { background: rgba(14,203,129,.15); color: #0ECB81; }
+.badge-sell      { background: rgba(246,70, 93,.15);  color: #F6465D; }
+.badge-pending   { background: rgba(240,185,11,.15);  color: #F0B90B; }
+.badge-processing{ background: rgba(51,117,187,.15);  color: #3375BB; }
+.badge-completed { background: rgba(14,203,129,.15);  color: #0ECB81; }
+.badge-cancelled { background: rgba(132,142,156,.15); color: #848E9C; }
+.badge-released  { background: rgba(14,203,129,.12);  color: #0ECB81; }
+
+/* ── Buttons ─────────────────────────────────────────────── */
+.btn-primary {
+  background: #F0B90B;
+  color: #000;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 15px;
+  cursor: pointer;
+  width: 100%;
+  transition: opacity .2s;
+}
+.btn-primary:active { opacity: .8; }
+
+.btn-buy {
+  background: #0ECB81;
+  color: #fff;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: opacity .2s;
+}
+.btn-sell {
+  background: #F6465D;
+  color: #fff;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: opacity .2s;
+}
+.btn-ghost {
+  background: transparent;
+  color: #F0B90B;
+  border: 1px solid #F0B90B;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── Ionic overrides ─────────────────────────────────────── */
+ion-toolbar {
+  --background: #0B0E11;
+  --color: #EAECEF;
+  --border-color: #2B3139;
+}
+ion-item {
+  --background: #1E2329;
+  --color: #EAECEF;
+  --border-color: #2B3139;
+}
+ion-input, ion-select, ion-textarea {
+  --background: #2B3139;
+  --color: #EAECEF;
+  --placeholder-color: #848E9C;
+  --border-radius: 8px;
+  --padding-start: 12px;
+  --padding-end: 12px;
+}
+ion-searchbar {
+  --background: #1E2329;
+  --color: #EAECEF;
+  --placeholder-color: #848E9C;
+  --icon-color: #848E9C;
+  --border-radius: 8px;
+}
+ion-segment {
+  --background: #1E2329;
+}
+ion-segment-button {
+  --color: #848E9C;
+  --color-checked: #F0B90B;
+  --indicator-color: #F0B90B;
+}
+ion-badge {
+  --background: #F0B90B;
+  --color: #000;
+}
+ion-fab-button {
+  --background: #F0B90B;
+  --color: #000;
+}
+ion-refresher {
+  --ion-color-base: #F0B90B;
+}
+ion-spinner {
+  color: #F0B90B;
+}

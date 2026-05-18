@@ -1,0 +1,8 @@
+name: MGA P2P Theme
+type: theme
+description: 'Binance P2P management app — manage trust account, ads, orders, chat and releases.'
+package: Custom
+core_version_requirement: ^8.9 || ^9 || ^10 || ^11
+base theme: false
+regions:
+  content: Content

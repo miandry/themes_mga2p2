@@ -1,0 +1,8 @@
+name: 'MGA P2P Form'
+type: theme
+description: 'Receipt capture SPA — upload image, AI extraction (montant, phone, name…), saved in Drupal by the mga2p2 module.'
+package: Custom
+core_version_requirement: ^8.9 || ^9 || ^10 || ^11
+base theme: false
+regions:
+  content: Content

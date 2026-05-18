@@ -1,0 +1,18 @@
+<?php
+
+/**
+ * @file
+ * Theme hooks for mga2p2Form.
+ */
+
+/**
+ * Implements hook_preprocess_html().
+ */
+function mga2p2Form_preprocess_html(array &$variables): void {
+  // Same-origin API paths must include Drupal base_path (e.g. /platforme/).
+  $variables['drupal_base_path'] = base_path();
+  $path = \Drupal::service('extension.list.theme')->getPath('mga2p2Form');
+  $variables['mga2p2_form_dist_url'] = rtrim(base_path(), '/') . '/' . $path . '/dist';
+  $css_abs = \Drupal::root() . '/' . $path . '/dist/assets/style.css';
+  $variables['mga2p2_form_style_version'] = is_readable($css_abs) ? (string) filemtime($css_abs) : '0';
+}

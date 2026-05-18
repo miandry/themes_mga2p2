@@ -1,0 +1,33 @@
+{#
+/**
+ * @file
+ * Vue receipt form app (built in FormApp/).
+ */
+#}
+{%
+  set body_classes = [
+    logged_in ? 'user-logged-in',
+    not root_path ? 'path-frontpage' : 'path-' ~ root_path|clean_class,
+    db_offline ? 'db-offline',
+  ]
+%}
+<!DOCTYPE html>
+<html{{ html_attributes }}>
+  <head>
+    <head-placeholder token="{{ placeholder_token }}">
+    <title>{{ head_title|safe_join(' | ') }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark light">
+    <script>window.__drupalBasePath="{{ drupal_base_path|e('js') }}";</script>
+    <link rel="stylesheet" href="{{ mga2p2_form_dist_url }}/assets/style.css?v={{ mga2p2_form_style_version }}">
+    <css-placeholder token="{{ placeholder_token }}">
+    <js-placeholder token="{{ placeholder_token }}">
+  </head>
+  <body{{ attributes.addClass(body_classes) }}>
+    <a href="#main-content" class="visually-hidden focusable skip-link">{{ 'Skip to main content'|t }}</a>
+    {{ page }}
+    {{ page_bottom }}
+    <script type="module" src="{{ mga2p2_form_dist_url }}/assets/index.js"></script>
+    <js-bottom-placeholder token="{{ placeholder_token }}">
+  </body>
+</html>
