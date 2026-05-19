@@ -1,242 +1,226 @@
 <template>
-  <div class="wrap">
-    <header class="hdr">
-      <h1>Orders MGA</h1>
-      <div class="hdr__links">
-        <router-link class="link" to="/settings/mobile-ussd">Codes USSD</router-link>
-        <router-link class="link" to="/receipt">← Reçu</router-link>
-      </div>
-    </header>
-
-    <section class="card controls">
-      <p class="hint">Fenêtre de paiement : temps restant depuis la création du nœud + « temps restant (minutes) » enregistré.</p>
-      <div class="filters">
-        <div class="filter-field status-filter" role="group" aria-labelledby="status-filter-lbl">
-          <span id="status-filter-lbl" class="filter-lbl">Statut</span>
-          <div class="status-btns">
-            <button
-              type="button"
-              class="status-btn"
-              :class="{ 'status-btn--active': filterStatus === 'en_cours' }"
-              @click="setFilterStatus('en_cours')"
-            >
-              En cours
-            </button>
-            <button
-              type="button"
-              class="status-btn"
-              :class="{ 'status-btn--active': filterStatus === 'paye' }"
-              @click="setFilterStatus('paye')"
-            >
-              Payé
-            </button>
-            <button
-              type="button"
-              class="status-btn"
-              :class="{ 'status-btn--active': filterStatus === 'archive' }"
-              @click="setFilterStatus('archive')"
-            >
-              Archive
-            </button>
-            <button
-              type="button"
-              class="status-btn"
-              :class="{ 'status-btn--active': filterStatus === '' }"
-              @click="setFilterStatus('')"
-            >
-              Tous
-            </button>
-          </div>
+  <div class="orders-page">
+    <header class="orders-head">
+      <div class="orders-head__bar">
+        <div class="orders-head__titles">
+          <h1 class="orders-head__h1">Commandes</h1>
+          <p class="orders-head__sub">Montants en Ar (ariary) · mobile money</p>
         </div>
-        <label class="filter-field filter-field--grow">
-          <span class="filter-lbl">Recherche</span>
+        <div class="orders-head__links">
+          <button type="button" class="icon-btn" :disabled="loading" title="Rafraîchir" @click="() => load(true)">
+            ↻
+          </button>
+          <router-link class="link" to="/settings/mobile-ussd">Codes USSD</router-link>
+          <router-link class="link" to="/receipt">Reçu</router-link>
+        </div>
+      </div>
+
+      <div class="orders-segment" role="tablist" aria-label="Filtre des commandes">
+        <button
+          type="button"
+          role="tab"
+          class="seg-btn"
+          :class="{ 'seg-btn--on': listSegment === 'active' }"
+          @click="listSegment = 'active'"
+        >
+          En cours
+        </button>
+        <button
+          type="button"
+          role="tab"
+          class="seg-btn"
+          :class="{ 'seg-btn--on': listSegment === 'completed' }"
+          @click="listSegment = 'completed'"
+        >
+          Terminées
+        </button>
+        <button
+          type="button"
+          role="tab"
+          class="seg-btn"
+          :class="{ 'seg-btn--on': listSegment === 'all' }"
+          @click="listSegment = 'all'"
+        >
+          Toutes
+        </button>
+      </div>
+
+      <div class="poll-toolbar">
+        <div class="poll-row">
+          <span class="poll-label">Actualisation auto</span>
+          <label class="poll-toggle">
+            <input v-model="pollEnabled" type="checkbox" class="poll-toggle__inp" />
+            <span class="poll-toggle__ui" />
+          </label>
+        </div>
+        <div class="poll-row poll-row--second">
+          <span class="poll-label">Toutes les</span>
+          <select v-model.number="pollIntervalSec" class="poll-select" :disabled="!pollEnabled">
+            <option v-for="s in POLL_PRESETS_SEC" :key="s" :value="s">{{ formatPollLabel(s) }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="orders-tools">
+        <label class="search-wrap">
+          <span class="search-lbl">Recherche</span>
           <input
             v-model="filterSearch"
             type="search"
-            class="filter-inp"
-            placeholder="Nom, téléphone, montant, type (MVola, Orange…)"
+            class="search-inp"
+            placeholder="Nom, téléphone, montant, MVola…"
             autocomplete="off"
           />
         </label>
-      </div>
-      <div class="push-row">
-        <button type="button" class="ghost push-btn" :disabled="pushBusy" @click="onPushEnable">
-          {{ pushBusy ? '…' : 'Notifications (statut)' }}
-        </button>
-        <button
-          v-if="pushOptedIn"
-          type="button"
-          class="ghost push-btn push-btn--off"
-          :disabled="pushBusy"
-          @click="onPushDisable"
-        >
-          Désactiver
-        </button>
-        <span v-if="pushHint" class="push-hint">{{ pushHint }}</span>
-      </div>
-      <div class="refresh-bar">
-        <button type="button" class="ghost" :disabled="loading" @click="() => load(true)">Rafraîchir</button>
-        <div class="auto-refresh" role="group" aria-labelledby="auto-refresh-lbl">
-          <span id="auto-refresh-lbl" class="filter-lbl">Actualisation auto</span>
-          <div class="status-btns">
-            <button
-              type="button"
-              class="status-btn"
-              :class="{ 'status-btn--active': autoRefreshMs === 5000 }"
-              @click="setAutoRefresh(5000)"
-            >
-              5 s
-            </button>
-            <button
-              type="button"
-              class="status-btn"
-              :class="{ 'status-btn--active': autoRefreshMs === 10000 }"
-              @click="setAutoRefresh(10000)"
-            >
-              10 s
-            </button>
-            <button
-              type="button"
-              class="status-btn"
-              :class="{ 'status-btn--active': autoRefreshMs === 15000 }"
-              @click="setAutoRefresh(15000)"
-            >
-              15 s
-            </button>
-            <button
-              type="button"
-              class="status-btn"
-              :class="{ 'status-btn--active': autoRefreshMs === 60000 }"
-              @click="setAutoRefresh(60000)"
-            >
-              1 min
-            </button>
-            <button
-              type="button"
-              class="status-btn"
-              :class="{ 'status-btn--active': autoRefreshMs === 0 }"
-              @click="setAutoRefresh(0)"
-            >
-              Stop
-            </button>
-          </div>
+        <div class="push-row">
+          <button type="button" class="ghost push-btn" :disabled="pushBusy" @click="onPushEnable">
+            {{ pushBusy ? '…' : 'Notifications' }}
+          </button>
+          <button
+            v-if="pushOptedIn"
+            type="button"
+            class="ghost push-btn push-btn--off"
+            :disabled="pushBusy"
+            @click="onPushDisable"
+          >
+            Désactiver
+          </button>
+          <span v-if="pushHint" class="push-hint">{{ pushHint }}</span>
         </div>
       </div>
       <p v-if="error" class="err">{{ error }}</p>
       <p v-if="markPayeError" class="err">{{ markPayeError }}</p>
-    </section>
+    </header>
 
-    <p v-if="loading" class="loading">Chargement…</p>
-    <div v-else-if="!rows.length" class="empty card">
-      {{ hasActiveFilters ? 'Aucun résultat pour ces filtres.' : 'Aucun order_mga publié.' }}
-    </div>
-    <div v-else class="cards-grid">
-      <article
-        v-for="row in rows"
-        :key="row.nid"
-        class="order-card"
-        :class="{ 'order-card--expired': isPaymentWindowExpired(row) }"
-      >
-        <div class="order-card__top">
-          <span class="order-card__nid mono">#{{ row.nid }}</span>
-          <span class="order-card__badges">
-            <span class="order-card__status" :class="'order-card__status--' + (row.status || 'en_cours')">{{ formatStatus(row.status) }}</span>
-            <span
-              :class="[
-                'order-card__remain',
-                isPaymentWindowExpired(row) ? 'expired' : '',
-                !paymentWindowActive(row) ? 'frozen' : '',
-              ]"
+    <main class="orders-body">
+      <div v-if="loading" class="center-spinner">
+        <span class="spinner" aria-hidden="true" />
+        <span class="sr-only">Chargement</span>
+      </div>
+
+      <div v-else-if="!rows.length" class="empty-state">
+        <span class="empty-ico" aria-hidden="true">◇</span>
+        <p>{{ emptyMessage }}</p>
+      </div>
+
+      <div v-else class="list-wrap">
+        <article
+          v-for="row in rows"
+          :key="row.nid"
+          class="bcard"
+          :class="{ 'bcard--expired': isPaymentWindowExpired(row) }"
+          @click="goDetail(row.nid)"
+        >
+          <div class="bcard__header">
+            <span class="bcard__side" :class="paymentSideClass(row)">{{ paymentSideLabel(row) }}</span>
+            <span class="bcard__asset">{{ row.title }}</span>
+            <span class="badge" :class="statusBadgeClass(row)">{{ formatStatus(row.status) }}</span>
+          </div>
+
+          <div
+            v-if="paymentWindowActive(row) && !isPaymentWindowExpired(row)"
+            class="bcard__countdown"
+          >
+            <span class="bcard__clock" aria-hidden="true">⏱</span>
+            <span>Payer sous {{ formatRemain(row) }}</span>
+          </div>
+
+          <div class="bcard__body">
+            <div class="bcard__row">
+              <span class="label">Montant</span>
+              <span class="value highlight">{{ formatMontantAr(row) }}</span>
+            </div>
+            <div v-if="row.nom" class="bcard__row">
+              <span class="label">Nom</span>
+              <span class="value">{{ row.nom }}</span>
+            </div>
+            <div class="bcard__row">
+              <span class="label">Téléphone</span>
+              <span class="value mono">{{ row.phone || '—' }}</span>
+            </div>
+            <div class="bcard__row">
+              <span class="label">Paiement</span>
+              <span class="value">{{ formatPayment(row.payment_type) }}</span>
+            </div>
+            <div v-if="row.reference" class="bcard__row">
+              <span class="label">Référence</span>
+              <span class="value mono">{{ row.reference }}</span>
+            </div>
+            <div v-if="row.bank_name" class="bcard__row">
+              <span class="label">Opérateur</span>
+              <span class="value">{{ row.bank_name }}</span>
+            </div>
+            <div v-if="row.payment_proof_url" class="bcard__row bcard__row--proof">
+              <span class="label">Preuve</span>
+              <span class="value">
+                <img
+                  :src="proofImgSrc(row.payment_proof_url)"
+                  alt=""
+                  class="bcard__thumb"
+                  loading="lazy"
+                />
+              </span>
+            </div>
+          </div>
+
+          <div class="bcard__footer">
+            <span class="order-no">#{{ row.nid }}</span>
+            <span class="time">{{ timeAgo(row.created) }}</span>
+          </div>
+
+          <div class="bcard__actions" @click.stop>
+            <a
+              v-if="rowStatus(row) === 'en_cours' && mvolaItemPayTelHref(row)"
+              class="act act--mvola"
+              :href="mvolaItemPayTelHref(row)!"
+              rel="nofollow"
             >
-              {{ formatRemain(row) }}
-            </span>
-          </span>
-        </div>
-        <h2 class="order-card__title">{{ row.title }}</h2>
-        <p v-if="row.reference" class="order-card__ref mono">{{ row.reference }}</p>
-        <dl class="order-card__dl">
-          <div class="order-card__row">
-            <dt>Montant</dt>
-            <dd>{{ row.montant || '—' }}<span v-if="row.currency" class="muted"> {{ row.currency }}</span></dd>
+              MVola
+            </a>
+            <a
+              v-if="rowStatus(row) === 'en_cours' && orangeItemPayTelHref(row)"
+              class="act act--orange"
+              :href="orangeItemPayTelHref(row)!"
+              rel="nofollow"
+            >
+              Orange
+            </a>
+            <button
+              v-if="rowStatus(row) !== 'paye'"
+              type="button"
+              class="act act--pay"
+              :disabled="markPayeBusyNid !== null"
+              @click="markPayeDirect(row.nid)"
+            >
+              {{ markPayeBusyNid === row.nid ? '…' : 'Marquer payé' }}
+            </button>
+            <button
+              v-if="ussdDialCodeForRow(row)"
+              type="button"
+              class="act act--muted"
+              @click="copyUssdForRow(row)"
+            >
+              {{ copyUssdFlashNid === row.nid ? 'Copié !' : 'Copier code USSD' }}
+            </button>
+            <router-link class="act act--detail" :to="{ name: 'order-mga-detail', params: { nid: String(row.nid) } }">
+              Détails
+            </router-link>
           </div>
-          <div v-if="row.nom" class="order-card__row">
-            <dt>Nom</dt>
-            <dd>{{ row.nom }}</dd>
-          </div>
-          <div class="order-card__row">
-            <dt>Téléphone</dt>
-            <dd class="mono">{{ row.phone || '—' }}</dd>
-          </div>
-          <div class="order-card__row">
-            <dt>Paiement</dt>
-            <dd>{{ formatPayment(row.payment_type) }}</dd>
-          </div>
-          <div v-if="row.bank_name" class="order-card__row">
-            <dt>Opérateur</dt>
-            <dd>{{ row.bank_name }}</dd>
-          </div>
-          <div v-if="row.payment_proof_url" class="order-card__row order-card__row--proof">
-            <dt>Preuve</dt>
-            <dd>
-              <img
-                :src="proofImgSrc(row.payment_proof_url)"
-                alt=""
-                class="order-card__proof-thumb"
-                loading="lazy"
-              />
-            </dd>
-          </div>
-        </dl>
-        <div class="order-card__links">
-          <a
-            v-if="rowStatus(row) === 'en_cours' && mvolaItemPayTelHref(row)"
-            class="order-card__link order-card__link--mvola"
-            :href="mvolaItemPayTelHref(row)!"
-            rel="nofollow"
-          >
-            MVola (composer)
-          </a>
-          <a
-            v-if="rowStatus(row) === 'en_cours' && orangeItemPayTelHref(row)"
-            class="order-card__link order-card__link--orange"
-            :href="orangeItemPayTelHref(row)!"
-            rel="nofollow"
-          >
-            Orange Money (composer)
-          </a>
-          <button
-            v-if="rowStatus(row) !== 'paye'"
-            type="button"
-            class="order-card__proof"
-            :disabled="markPayeBusyNid !== null"
-            @click="markPayeDirect(row.nid)"
-          >
-            {{ markPayeBusyNid === row.nid ? 'Mise à jour…' : 'Marquer Payé' }}
-          </button>
-          <button
-            v-if="ussdDialCodeForRow(row)"
-            type="button"
-            class="order-card__copy-ussd"
-            @click="copyUssdForRow(row)"
-          >
-            {{ copyUssdFlashNid === row.nid ? 'Copié !' : 'Copier code USSD' }}
-          </button>
-          <router-link class="order-card__detail" :to="{ name: 'order-mga-detail', params: { nid: String(row.nid) } }">
-            Détails
-          </router-link>
-        </div>
-      </article>
-    </div>
-    <div v-if="rows.length && hasMore && !loading" class="load-more-wrap">
-      <button type="button" class="ghost load-more load-more--primary" :disabled="loadingMore" @click="loadMore">
-        {{ loadingMore ? 'Chargement…' : 'Voir plus' }}
-      </button>
-    </div>
+        </article>
+      </div>
+
+      <div v-if="rows.length && hasMore && !loading" class="load-more-wrap">
+        <button type="button" class="ghost load-more load-more--primary" :disabled="loadingMore" @click="loadMore">
+          {{ loadingMore ? 'Chargement…' : 'Voir plus' }}
+        </button>
+      </div>
+    </main>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { apiUrl } from '@/lib/apiUrl';
 import type { OrderMgaRow } from '@/types/orderMga';
 import {
@@ -248,6 +232,28 @@ import {
 import { readMobileUssdPatternsFromStorage, applyMobileUssdPlaceholders } from '@/lib/mobileUssd';
 
 const PAGE_SIZE = 5;
+
+const LS_POLL_ON = 'mga2p2_form_orders_poll_on';
+const LS_POLL_SEC = 'mga2p2_form_orders_poll_sec';
+const POLL_PRESETS_SEC = [5, 15, 30, 60, 120, 300] as const;
+type PollSec = (typeof POLL_PRESETS_SEC)[number];
+
+function readPollOn(): boolean {
+  const v = localStorage.getItem(LS_POLL_ON);
+  if (v === null) return true;
+  return v === '1';
+}
+
+function readPollSec(): PollSec {
+  const raw = localStorage.getItem(LS_POLL_SEC);
+  const n = raw ? parseInt(raw, 10) : 60;
+  return (POLL_PRESETS_SEC as readonly number[]).includes(n) ? (n as PollSec) : 60;
+}
+
+const router = useRouter();
+const listSegment = ref<'active' | 'completed' | 'all'>('active');
+const pollEnabled = ref(readPollOn());
+const pollIntervalSec = ref<PollSec>(readPollSec());
 
 const mobileUssdPatterns = ref(readMobileUssdPatternsFromStorage());
 
@@ -262,12 +268,6 @@ const loading = ref(false);
 const loadingMore = ref(false);
 const hasMore = ref(false);
 const error = ref('');
-const filterStatus = ref<'' | 'en_cours' | 'paye' | 'archive'>('');
-
-function setFilterStatus(s: '' | 'en_cours' | 'paye' | 'archive') {
-  if (filterStatus.value === s) return;
-  filterStatus.value = s;
-}
 const filterSearch = ref('');
 const pushBusy = ref(false);
 const pushHint = ref('');
@@ -280,17 +280,30 @@ let tick: ReturnType<typeof setInterval> | null = null;
 let autoRefreshTimer: ReturnType<typeof setInterval> | null = null;
 const nowSec = ref(Math.floor(Date.now() / 1000));
 
-/** 0 = off; otherwise interval in ms */
-const autoRefreshMs = ref(0);
+const autoRefreshMs = computed(() => (pollEnabled.value ? pollIntervalSec.value * 1000 : 0));
 
 const hasActiveFilters = computed(
-  () => !!(filterStatus.value || filterSearch.value.trim()),
+  () => !!(listSegment.value !== 'all' || filterSearch.value.trim()),
 );
+
+const emptyMessage = computed(() => {
+  if (hasActiveFilters.value) return 'Aucune commande pour ce filtre.';
+  return 'Aucune commande publiée.';
+});
 
 let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
-function setAutoRefresh(ms: 0 | 5000 | 10000 | 15000 | 60000) {
-  autoRefreshMs.value = ms;
+function formatPollLabel(sec: number): string {
+  if (sec < 60) return `${sec} s`;
+  if (sec % 60 === 0) return `${sec / 60} min`;
+  return `${sec} s`;
+}
+
+/** Maps UI segment → API `status` query (empty = all). */
+function apiStatusForList(): '' | 'en_cours' | 'paye' {
+  if (listSegment.value === 'active') return 'en_cours';
+  if (listSegment.value === 'completed') return 'paye';
+  return '';
 }
 
 function syncAutoRefreshTimer() {
@@ -306,6 +319,40 @@ function syncAutoRefreshTimer() {
   }, ms);
 }
 
+function goDetail(nid: number) {
+  void router.push({ name: 'order-mga-detail', params: { nid: String(nid) } });
+}
+
+function timeAgo(tsSec: number): string {
+  const diff = Date.now() - tsSec * 1000;
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "à l'instant";
+  if (m < 60) return `il y a ${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `il y a ${h} h`;
+  const j = Math.floor(h / 24);
+  return `il y a ${j} j`;
+}
+
+function paymentSideLabel(row: OrderMgaRow): string {
+  if (row.payment_type === 'mvola') return 'MVOLA';
+  if (row.payment_type === 'orange') return 'ORANGE';
+  return 'MGA';
+}
+
+function paymentSideClass(row: OrderMgaRow): string {
+  if (row.payment_type === 'mvola') return 'buy';
+  if (row.payment_type === 'orange') return 'orange';
+  return 'neu';
+}
+
+function statusBadgeClass(row: OrderMgaRow): string {
+  const s = rowStatus(row);
+  if (s === 'paye') return 'badge-completed';
+  if (s === 'archive') return 'badge-cancelled';
+  return 'badge-pending';
+}
+
 function proofImgSrc(url: string): string {
   if (url.startsWith('http')) return url;
   return apiUrl(url.replace(/^\//, ''));
@@ -317,13 +364,28 @@ function formatPayment(t: string | null | undefined): string {
   return '—';
 }
 
+/** Montant affiché en ariary (Ar) — pas de libellé type USDT. */
+function formatMontantAr(row: OrderMgaRow): string {
+  const raw = row.montant;
+  if (raw === undefined || raw === null || String(raw).trim() === '') return '—';
+  const m = String(raw).trim();
+  const cur = String(row.currency ?? '').trim().toUpperCase();
+  if (
+    cur === '' ||
+    cur === 'MGA' ||
+    cur === 'ARIARY' ||
+    cur === 'AR' ||
+    cur === 'USDT'
+  ) {
+    return `${m} Ar`;
+  }
+  return `${m} ${row.currency}`;
+}
+
 function digitsOnly(s: string | null | undefined): string {
   return String(s ?? '').replace(/\D/g, '');
 }
 
-/**
- * Lien tel: MVola — modèle configurable (NUM, MONTANT). Liste: en_cours uniquement.
- */
 function mvolaItemPayTelHref(row: OrderMgaRow): string | null {
   if (row.payment_type !== 'mvola') return null;
   const phone = digitsOnly(row.phone);
@@ -333,9 +395,6 @@ function mvolaItemPayTelHref(row: OrderMgaRow): string | null {
   return `tel:${ussd.replace(/#/g, '%23')}`;
 }
 
-/**
- * Lien tel: Orange Money — modèle configurable (NUMÉRO / NUMERO / NUM, MONTANT).
- */
 function orangeItemPayTelHref(row: OrderMgaRow): string | null {
   if (row.payment_type !== 'orange') return null;
   const phone = digitsOnly(row.phone);
@@ -345,7 +404,6 @@ function orangeItemPayTelHref(row: OrderMgaRow): string | null {
   return `tel:${ussd.replace(/#/g, '%23')}`;
 }
 
-/** Dial string for MVola / Orange (placeholders filled), or null if not applicable. */
 function ussdDialCodeForRow(row: OrderMgaRow): string | null {
   const phone = digitsOnly(row.phone);
   const montant = digitsOnly(row.montant);
@@ -391,7 +449,7 @@ async function copyUssdForRow(row: OrderMgaRow) {
 
 function formatStatus(s: string | null | undefined): string {
   if (s === 'paye') return 'Payé';
-  if (s === 'archive') return 'Archive';
+  if (s === 'archive') return 'Archivée';
   return 'En cours';
 }
 
@@ -414,7 +472,7 @@ function remainingFor(row: OrderMgaRow): number {
 async function markPayeDirect(nid: number) {
   if (markPayeBusyNid.value !== null) return;
   markPayeError.value = '';
-  if (!window.confirm(`Mettre la commande #${nid} au statut « Payé » ?`)) {
+  if (!window.confirm(`Marquer la commande #${nid} comme payée ?`)) {
     return;
   }
   markPayeBusyNid.value = nid;
@@ -429,7 +487,7 @@ async function markPayeDirect(nid: number) {
     if (!r.ok) throw new Error((j as { error?: string }).error || r.statusText);
     await load(true);
   } catch (e: unknown) {
-    markPayeError.value = e instanceof Error ? e.message : 'Mise à jour du statut impossible';
+    markPayeError.value = e instanceof Error ? e.message : 'Mise à jour impossible';
   } finally {
     markPayeBusyNid.value = null;
   }
@@ -440,15 +498,15 @@ function formatRemain(row: OrderMgaRow): string {
     return '—';
   }
   const sec = remainingFor(row);
-  if (sec <= 0) return 'Expiré';
+  if (sec <= 0) return 'terminé';
   const m = Math.floor(sec / 60);
   const s = sec % 60;
   if (m >= 60) {
     const h = Math.floor(m / 60);
     const mm = m % 60;
-    return `${h}h ${String(mm).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
+    return `${h} h ${mm} min ${s} s`;
   }
-  return `${m}m ${String(s).padStart(2, '0')}s`;
+  return `${m} min ${s} s`;
 }
 
 async function onPushEnable() {
@@ -482,7 +540,7 @@ async function parseJsonResponse(r: Response): Promise<unknown> {
   } catch {
     const snippet = text.replace(/\s+/g, ' ').slice(0, 120);
     throw new Error(
-      r.ok ? `Réponse invalide (pas JSON). ${snippet}` : `Erreur serveur (${r.status}). ${snippet}`,
+      r.ok ? `Réponse invalide (JSON). ${snippet}` : `Erreur serveur (${r.status}). ${snippet}`,
     );
   }
 }
@@ -499,8 +557,9 @@ async function load(reset = true) {
     const params = new URLSearchParams();
     params.set('limit', String(PAGE_SIZE));
     params.set('offset', reset ? '0' : String(rows.value.length));
-    if (filterStatus.value) {
-      params.set('status', filterStatus.value);
+    const st = apiStatusForList();
+    if (st) {
+      params.set('status', st);
     }
     const q = filterSearch.value.trim();
     if (q) {
@@ -549,7 +608,7 @@ function loadMore() {
   void load(false);
 }
 
-watch(filterStatus, () => {
+watch(listSegment, () => {
   void load(true);
 });
 
@@ -560,7 +619,9 @@ watch(filterSearch, () => {
   }, 400);
 });
 
-watch(autoRefreshMs, () => {
+watch([pollEnabled, pollIntervalSec], () => {
+  localStorage.setItem(LS_POLL_ON, pollEnabled.value ? '1' : '0');
+  localStorage.setItem(LS_POLL_SEC, String(pollIntervalSec.value));
   syncAutoRefreshTimer();
 });
 
@@ -568,6 +629,7 @@ onMounted(() => {
   pushOptedIn.value = isOrderPushOptedIn();
   void resyncOrderMgaWebPushIfOptedIn();
   void load(true);
+  syncAutoRefreshTimer();
   tick = setInterval(() => {
     nowSec.value = Math.floor(Date.now() / 1000);
   }, 1000);
@@ -582,126 +644,228 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.wrap { max-width: 960px; margin: 0 auto; padding: 14px 12px 32px; }
-.hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
-.hdr__links { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-.hdr h1 { font-size: 17px; margin: 0; font-weight: 800; color: #f0b90b; }
-.link { color: #848e9c; text-decoration: none; font-size: 12px; }
-.link:hover { color: #eaecef; }
-.card {
-  background: #1e2329;
-  border: 1px solid #2b3139;
-  border-radius: 10px;
-  padding: 12px 14px;
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
-.controls { margin-bottom: 12px; }
-.filters {
+
+.orders-page {
+  min-height: 100%;
+  background: #0b0e11;
+  color: #eaecef;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.orders-head {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #0b0e11;
+  border-bottom: 1px solid #2b3139;
+  padding-bottom: 8px;
+}
+
+.orders-head__bar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px 12px;
-  align-items: flex-end;
-  margin-bottom: 12px;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px 8px;
 }
-.filter-field {
+
+.orders-head__h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #eaecef;
+}
+
+.orders-head__sub {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #848e9c;
+}
+
+.orders-head__links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.link {
+  color: #848e9c;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+}
+.link:hover {
+  color: #f0b90b;
+}
+
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid #2b3139;
+  background: #13161a;
+  color: #f0b90b;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.orders-segment {
+  display: flex;
+  padding: 0 16px 10px;
+  gap: 0;
+  background: #0b0e11;
+}
+
+.seg-btn {
+  flex: 1;
+  margin: 0;
+  padding: 10px 8px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #848e9c;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.seg-btn--on {
+  color: #f0b90b;
+  border-bottom-color: #f0b90b;
+}
+.seg-btn:hover:not(.seg-btn--on) {
+  color: #eaecef;
+}
+
+.poll-toolbar {
+  background: #0b0e11;
+  padding: 4px 16px 10px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-width: 0;
 }
-.filter-field--grow {
-  flex: 1 1 200px;
+.poll-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
-.filter-lbl {
-  font-size: 9px;
+.poll-row--second {
+  padding-top: 2px;
+}
+.poll-label {
+  font-size: 13px;
+  color: #848e9c;
+}
+
+.poll-toggle {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  cursor: pointer;
+}
+.poll-toggle__inp {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.poll-toggle__ui {
+  position: absolute;
+  inset: 0;
+  background: #2b3139;
+  border-radius: 12px;
+  transition: background 0.2s;
+}
+.poll-toggle__ui::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  left: 3px;
+  top: 3px;
+  background: #848e9c;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+.poll-toggle__inp:checked + .poll-toggle__ui {
+  background: rgba(240, 185, 11, 0.35);
+}
+.poll-toggle__inp:checked + .poll-toggle__ui::after {
+  transform: translateX(20px);
+  background: #f0b90b;
+}
+
+.poll-select {
+  max-width: 140px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #2b3139;
+  background: #13161a;
+  color: #eaecef;
+  font-size: 14px;
+}
+
+.orders-tools {
+  padding: 0 16px 8px;
+}
+.search-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.search-lbl {
+  font-size: 10px;
   font-weight: 700;
   color: #5e6673;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
 }
-.filter-inp {
+.search-inp {
   box-sizing: border-box;
-  padding: 6px 8px;
-  border-radius: 6px;
-  border: 1px solid #2b3139;
-  background: #0b0e11;
-  color: #eaecef;
-  font-size: 11px;
-  min-width: 0;
   width: 100%;
-}
-.filter-inp:focus {
-  outline: none;
-  border-color: #f0b90b;
-}
-.status-filter {
-  flex: 0 1 auto;
-}
-.status-btns {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-.status-btn {
-  margin: 0;
-  padding: 6px 10px;
-  border-radius: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
   border: 1px solid #2b3139;
-  background: #0b0e11;
-  color: #848e9c;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  line-height: 1.2;
-}
-.status-btn:hover {
+  background: #13161a;
   color: #eaecef;
-  border-color: #3d4f5c;
+  font-size: 14px;
 }
-.status-btn--active {
-  color: #eaecef;
-  border-color: #f0b90b;
-  background: rgba(240, 185, 11, 0.12);
-  box-shadow: 0 0 0 1px rgba(240, 185, 11, 0.15);
-}
-.status-btn:focus-visible {
+.search-inp:focus {
   outline: none;
   border-color: #f0b90b;
 }
-.hint { color: #848e9c; font-size: 11px; line-height: 1.45; margin: 0 0 10px; }
+
 .push-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
 }
-.push-btn { margin-bottom: 0; }
-.push-btn--off { opacity: 0.85; }
 .push-hint {
   font-size: 10px;
   color: #5e6673;
-  flex: 1 1 140px;
-  min-width: 0;
-}
-.refresh-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 10px 14px;
-  margin-bottom: 8px;
-}
-.refresh-bar > .ghost {
-  flex: 0 0 auto;
-}
-.auto-refresh {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
+  flex: 1 1 100px;
 }
 .ghost {
-  margin-bottom: 0;
   padding: 6px 10px;
   border-radius: 6px;
   border: 1px solid #2b3139;
@@ -710,16 +874,267 @@ onUnmounted(() => {
   font-size: 11px;
   cursor: pointer;
 }
-.ghost:disabled { opacity: 0.5; cursor: not-allowed; }
-.err { color: #f6465d; font-size: 11px; margin: 8px 0 0; }
-.loading { color: #848e9c; font-size: 12px; padding: 16px 8px; text-align: center; }
-.empty { color: #848e9c; font-size: 12px; padding: 16px 14px; text-align: center; }
+.ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.push-btn--off {
+  opacity: 0.85;
+}
+
+.err {
+  color: #f6465d;
+  font-size: 11px;
+  margin: 0 16px 6px;
+}
+
+.orders-body {
+  padding-bottom: 24px;
+}
+
+.center-spinner {
+  display: flex;
+  justify-content: center;
+  padding: 48px 16px;
+}
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #2b3139;
+  border-top-color: #f0b90b;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 56px 24px;
+  color: #848e9c;
+  gap: 12px;
+}
+.empty-ico {
+  font-size: 40px;
+  opacity: 0.5;
+}
+
+.list-wrap {
+  padding: 12px 16px 0;
+}
+
+.bcard {
+  background: #1e2329;
+  border: 1px solid #2b3139;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.bcard:hover {
+  border-color: #3d4f5c;
+}
+.bcard:active {
+  border-color: #f0b90b;
+}
+.bcard--expired {
+  opacity: 0.92;
+}
+
+.bcard__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.bcard__side {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.bcard__side.buy {
+  background: rgba(14, 203, 129, 0.15);
+  color: #0ecb81;
+}
+.bcard__side.orange {
+  background: rgba(255, 121, 0, 0.15);
+  color: #ff7900;
+}
+.bcard__side.neu {
+  background: rgba(132, 142, 156, 0.15);
+  color: #aeb4bc;
+}
+
+.bcard__asset {
+  font-size: 14px;
+  font-weight: 600;
+  color: #eaecef;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.badge-pending {
+  background: rgba(240, 185, 11, 0.12);
+  color: #f0b90b;
+  border: 1px solid rgba(240, 185, 11, 0.35);
+}
+.badge-completed {
+  background: rgba(14, 203, 129, 0.12);
+  color: #0ecb81;
+  border: 1px solid rgba(14, 203, 129, 0.35);
+}
+.badge-cancelled {
+  background: rgba(132, 142, 156, 0.12);
+  color: #848e9c;
+  border: 1px solid #3d4f5c;
+}
+
+.bcard__countdown {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 0 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(240, 185, 11, 0.08);
+  border: 1px solid rgba(240, 185, 11, 0.25);
+  font-size: 12px;
+  font-weight: 600;
+  color: #f0b90b;
+}
+.bcard__clock {
+  flex-shrink: 0;
+}
+
+.bcard__body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.bcard__row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  gap: 10px;
+}
+.bcard__row .label {
+  color: #848e9c;
+  flex-shrink: 0;
+}
+.bcard__row .value {
+  color: #eaecef;
+  font-weight: 500;
+  text-align: right;
+  word-break: break-word;
+}
+.bcard__row .value.highlight {
+  color: #f0b90b;
+  font-weight: 700;
+}
+.bcard__row .mono {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+}
+.bcard__row--proof .value {
+  text-align: right;
+}
+.bcard__thumb {
+  display: inline-block;
+  max-height: 48px;
+  max-width: 120px;
+  border-radius: 6px;
+  border: 1px solid #2b3139;
+  vertical-align: middle;
+}
+
+.bcard__footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #2b3139;
+  font-size: 11px;
+  color: #848e9c;
+}
+.order-no {
+  font-weight: 600;
+}
+
+.bcard__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  border: 1px solid #2b3139;
+  background: #13161a;
+  color: #eaecef;
+  cursor: pointer;
+  font-family: inherit;
+}
+.act--mvola {
+  border-color: rgba(14, 203, 129, 0.45);
+  color: #0ecb81;
+  background: rgba(14, 203, 129, 0.1);
+}
+.act--orange {
+  border-color: rgba(255, 121, 0, 0.45);
+  color: #ff7900;
+  background: rgba(255, 121, 0, 0.1);
+}
+.act--pay {
+  border-color: rgba(14, 203, 129, 0.45);
+  color: #0ecb81;
+}
+.act--muted {
+  color: #aeb4bc;
+}
+.act--detail {
+  border-color: #3d4f5c;
+  color: #aeb4bc;
+}
+.act:hover {
+  filter: brightness(1.08);
+}
+.act:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .load-more-wrap {
   display: flex;
   justify-content: center;
-  margin-top: 14px;
-  margin-bottom: 8px;
+  padding: 16px;
 }
 .load-more {
   min-width: 160px;
@@ -732,208 +1147,5 @@ onUnmounted(() => {
 .load-more--primary:hover:not(:disabled) {
   border-color: rgba(240, 185, 11, 0.65);
   background: rgba(240, 185, 11, 0.1);
-  color: #fcd535;
-}
-
-.cards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 10px;
-}
-.order-card {
-  background: #1e2329;
-  border: 1px solid #2b3139;
-  border-radius: 10px;
-  padding: 10px 12px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  transition: border-color 0.15s ease;
-}
-.order-card:hover { border-color: #3d4f5c; }
-.order-card--expired { opacity: 0.92; }
-.order-card__top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 8px;
-}
-.order-card__badges {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-}
-.order-card__status {
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 3px 6px;
-  border-radius: 4px;
-  border: 1px solid #2b3139;
-  color: #eaecef;
-  background: rgba(132, 142, 156, 0.15);
-}
-.order-card__status--en_cours { color: #f0b90b; border-color: rgba(240, 185, 11, 0.4); background: rgba(240, 185, 11, 0.1); }
-.order-card__status--paye { color: #0ecb81; border-color: rgba(14, 203, 129, 0.35); background: rgba(14, 203, 129, 0.1); }
-.order-card__status--archive { color: #848e9c; border-color: #3d4f5c; }
-.order-card__nid {
-  font-size: 10px;
-  font-weight: 700;
-  color: #848e9c;
-  letter-spacing: 0.04em;
-}
-.order-card__remain {
-  font-size: 12px;
-  font-weight: 800;
-  color: #0ecb81;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  line-height: 1.15;
-}
-.order-card__remain.expired { color: #848e9c; font-weight: 600; font-size: 11px; }
-.order-card__remain.frozen {
-  color: #848e9c;
-  font-weight: 600;
-  font-size: 11px;
-}
-.order-card__title {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 700;
-  color: #eaecef;
-  line-height: 1.3;
-}
-.order-card__ref {
-  margin: -2px 0 0;
-  font-size: 10px;
-  color: #848e9c;
-}
-.order-card__dl { margin: 0; display: flex; flex-direction: column; gap: 5px; }
-.order-card__row {
-  display: grid;
-  grid-template-columns: 72px 1fr;
-  gap: 4px 8px;
-  font-size: 11px;
-  align-items: baseline;
-}
-.order-card__row dt {
-  margin: 0;
-  color: #848e9c;
-  font-size: 9px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-.order-card__row dd { margin: 0; color: #eaecef; font-weight: 500; word-break: break-word; }
-.order-card__row--proof dd {
-  min-width: 0;
-}
-.order-card__proof-thumb {
-  display: block;
-  max-height: 52px;
-  max-width: 100%;
-  width: auto;
-  border-radius: 6px;
-  border: 1px solid #2b3139;
-  object-fit: contain;
-}
-.mono { font-family: ui-monospace, monospace; font-size: 10px; color: #aeb4bc; }
-.muted { color: #848e9c; font-size: 10px; }
-.order-card__links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  margin-top: 2px;
-}
-.order-card__detail {
-  display: inline-block;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid #3d4f5c;
-  background: rgba(132, 142, 156, 0.1);
-  color: #aeb4bc;
-  font-size: 11px;
-  font-weight: 700;
-  text-decoration: none;
-}
-.order-card__detail:hover {
-  border-color: #5e6673;
-  color: #eaecef;
-}
-.order-card__link {
-  display: inline-block;
-  padding: 6px 10px;
-  border-radius: 6px;
-  background: rgba(240, 185, 11, 0.12);
-  border: 1px solid rgba(240, 185, 11, 0.35);
-  color: #f0b90b;
-  font-size: 11px;
-  font-weight: 700;
-  text-decoration: none;
-}
-.order-card__link--mvola {
-  background: rgba(14, 203, 129, 0.12);
-  border-color: rgba(14, 203, 129, 0.45);
-  color: #0ecb81;
-}
-.order-card__link.order-card__link--mvola:hover {
-  background: rgba(14, 203, 129, 0.22);
-  border-color: rgba(14, 203, 129, 0.65);
-  color: #0ecb81;
-}
-.order-card__link--orange {
-  background: rgba(255, 121, 0, 0.12);
-  border-color: rgba(255, 121, 0, 0.45);
-  color: #ff7900;
-}
-.order-card__link.order-card__link--orange:hover {
-  background: rgba(255, 121, 0, 0.22);
-  border-color: rgba(255, 121, 0, 0.65);
-  color: #ff9500;
-}
-.order-card__link:hover { background: rgba(240, 185, 11, 0.2); color: #fcd535; }
-.order-card__proof {
-  margin: 0;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid rgba(14, 203, 129, 0.45);
-  background: rgba(14, 203, 129, 0.12);
-  color: #0ecb81;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-}
-.order-card__proof:hover:not(:disabled) {
-  background: rgba(14, 203, 129, 0.22);
-  border-color: rgba(14, 203, 129, 0.65);
-}
-.order-card__proof:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-.order-card__copy-ussd {
-  margin: 0;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid #3d4f5c;
-  background: rgba(132, 142, 156, 0.12);
-  color: #aeb4bc;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-}
-.order-card__copy-ussd:hover {
-  border-color: #5e6673;
-  color: #eaecef;
-  background: rgba(132, 142, 156, 0.2);
-}
-@media (max-width: 400px) {
-  .order-card__row { grid-template-columns: 1fr; gap: 2px; }
-  .order-card__row dt { margin-bottom: -2px; }
 }
 </style>
