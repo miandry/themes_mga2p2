@@ -58,10 +58,10 @@
 
       <div class="section-header" style="margin-top:4px">
         <span>Receipt scan (AI)</span>
-        <a class="section-link" href="/form">Open →</a>
+        <a class="section-link" href="/form/receipt">Open →</a>
       </div>
       <div class="form-teaser">
-        <a href="/form" class="form-teaser__link">Upload receipt → extract montant, téléphone, nom & save</a>
+        <a href="/form/receipt" class="form-teaser__link">Upload receipt → extract montant, téléphone, nom & save</a>
       </div>
 
       <!-- Active orders section -->
