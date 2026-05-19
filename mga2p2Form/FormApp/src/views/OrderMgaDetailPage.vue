@@ -8,7 +8,7 @@
       </div>
       <div class="hdr__right">
         <router-link class="link" to="/settings/mobile-ussd">Codes USSD</router-link>
-        <router-link class="link" to="/">Reçu</router-link>
+        <router-link class="link" to="/receipt">Reçu</router-link>
       </div>
     </header>
 

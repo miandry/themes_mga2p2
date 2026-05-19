@@ -4,7 +4,7 @@
       <h1>Orders MGA</h1>
       <div class="hdr__links">
         <router-link class="link" to="/settings/mobile-ussd">Codes USSD</router-link>
-        <router-link class="link" to="/">← Reçu</router-link>
+        <router-link class="link" to="/receipt">← Reçu</router-link>
       </div>
     </header>
 
@@ -123,6 +123,7 @@
         </div>
       </div>
       <p v-if="error" class="err">{{ error }}</p>
+      <p v-if="markPayeError" class="err">{{ markPayeError }}</p>
     </section>
 
     <p v-if="loading" class="loading">Chargement…</p>
@@ -174,6 +175,17 @@
             <dt>Opérateur</dt>
             <dd>{{ row.bank_name }}</dd>
           </div>
+          <div v-if="row.payment_proof_url" class="order-card__row order-card__row--proof">
+            <dt>Preuve</dt>
+            <dd>
+              <img
+                :src="proofImgSrc(row.payment_proof_url)"
+                alt=""
+                class="order-card__proof-thumb"
+                loading="lazy"
+              />
+            </dd>
+          </div>
         </dl>
         <div class="order-card__links">
           <a
@@ -192,10 +204,26 @@
           >
             Orange Money (composer)
           </a>
+          <button
+            v-if="rowStatus(row) !== 'paye'"
+            type="button"
+            class="order-card__proof"
+            :disabled="markPayeBusyNid !== null"
+            @click="markPayeDirect(row.nid)"
+          >
+            {{ markPayeBusyNid === row.nid ? 'Mise à jour…' : 'Marquer Payé' }}
+          </button>
+          <button
+            v-if="ussdDialCodeForRow(row)"
+            type="button"
+            class="order-card__copy-ussd"
+            @click="copyUssdForRow(row)"
+          >
+            {{ copyUssdFlashNid === row.nid ? 'Copié !' : 'Copier code USSD' }}
+          </button>
           <router-link class="order-card__detail" :to="{ name: 'order-mga-detail', params: { nid: String(row.nid) } }">
             Détails
           </router-link>
-          <a class="order-card__link" :href="nodeHref(row.path)">Voir le nœud</a>
         </div>
       </article>
     </div>
@@ -244,6 +272,10 @@ const filterSearch = ref('');
 const pushBusy = ref(false);
 const pushHint = ref('');
 const pushOptedIn = ref(isOrderPushOptedIn());
+const markPayeBusyNid = ref<number | null>(null);
+const markPayeError = ref('');
+const copyUssdFlashNid = ref<number | null>(null);
+let copyUssdFlashTimer: ReturnType<typeof setTimeout> | null = null;
 let tick: ReturnType<typeof setInterval> | null = null;
 let autoRefreshTimer: ReturnType<typeof setInterval> | null = null;
 const nowSec = ref(Math.floor(Date.now() / 1000));
@@ -274,9 +306,9 @@ function syncAutoRefreshTimer() {
   }, ms);
 }
 
-function nodeHref(path: string): string {
-  if (path.startsWith('http')) return path;
-  return apiUrl(path.replace(/^\//, ''));
+function proofImgSrc(url: string): string {
+  if (url.startsWith('http')) return url;
+  return apiUrl(url.replace(/^\//, ''));
 }
 
 function formatPayment(t: string | null | undefined): string {
@@ -313,6 +345,50 @@ function orangeItemPayTelHref(row: OrderMgaRow): string | null {
   return `tel:${ussd.replace(/#/g, '%23')}`;
 }
 
+/** Dial string for MVola / Orange (placeholders filled), or null if not applicable. */
+function ussdDialCodeForRow(row: OrderMgaRow): string | null {
+  const phone = digitsOnly(row.phone);
+  const montant = digitsOnly(row.montant);
+  if (!phone || !montant) return null;
+  if (row.payment_type === 'mvola') {
+    return applyMobileUssdPlaceholders(mobileUssdPatterns.value.mvola, phone, montant);
+  }
+  if (row.payment_type === 'orange') {
+    return applyMobileUssdPlaceholders(mobileUssdPatterns.value.orange, phone, montant);
+  }
+  return null;
+}
+
+async function copyUssdForRow(row: OrderMgaRow) {
+  refreshPatternsFromStorage();
+  const code = ussdDialCodeForRow(row);
+  if (!code) return;
+  try {
+    await navigator.clipboard.writeText(code);
+  } catch {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = code;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    } catch {
+      return;
+    }
+  }
+  if (copyUssdFlashTimer) clearTimeout(copyUssdFlashTimer);
+  copyUssdFlashNid.value = row.nid;
+  copyUssdFlashTimer = setTimeout(() => {
+    copyUssdFlashNid.value = null;
+    copyUssdFlashTimer = null;
+  }, 2000);
+}
+
 function formatStatus(s: string | null | undefined): string {
   if (s === 'paye') return 'Payé';
   if (s === 'archive') return 'Archive';
@@ -333,6 +409,30 @@ function isPaymentWindowExpired(row: OrderMgaRow): boolean {
 
 function remainingFor(row: OrderMgaRow): number {
   return Math.max(0, row.deadline - nowSec.value);
+}
+
+async function markPayeDirect(nid: number) {
+  if (markPayeBusyNid.value !== null) return;
+  markPayeError.value = '';
+  if (!window.confirm(`Mettre la commande #${nid} au statut « Payé » ?`)) {
+    return;
+  }
+  markPayeBusyNid.value = nid;
+  try {
+    const r = await fetch(apiUrl('mga2p2-form/api/order-mga-status'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ nid, status: 'paye' }),
+    });
+    const j = await parseJsonResponse(r);
+    if (!r.ok) throw new Error((j as { error?: string }).error || r.statusText);
+    await load(true);
+  } catch (e: unknown) {
+    markPayeError.value = e instanceof Error ? e.message : 'Mise à jour du statut impossible';
+  } finally {
+    markPayeBusyNid.value = null;
+  }
 }
 
 function formatRemain(row: OrderMgaRow): string {
@@ -477,6 +577,7 @@ onUnmounted(() => {
   if (tick) clearInterval(tick);
   if (searchDebounce) clearTimeout(searchDebounce);
   if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  if (copyUssdFlashTimer) clearTimeout(copyUssdFlashTimer);
 });
 </script>
 
@@ -726,6 +827,18 @@ onUnmounted(() => {
   letter-spacing: 0.03em;
 }
 .order-card__row dd { margin: 0; color: #eaecef; font-weight: 500; word-break: break-word; }
+.order-card__row--proof dd {
+  min-width: 0;
+}
+.order-card__proof-thumb {
+  display: block;
+  max-height: 52px;
+  max-width: 100%;
+  width: auto;
+  border-radius: 6px;
+  border: 1px solid #2b3139;
+  object-fit: contain;
+}
 .mono { font-family: ui-monospace, monospace; font-size: 10px; color: #aeb4bc; }
 .muted { color: #848e9c; font-size: 10px; }
 .order-card__links {
@@ -782,6 +895,43 @@ onUnmounted(() => {
   color: #ff9500;
 }
 .order-card__link:hover { background: rgba(240, 185, 11, 0.2); color: #fcd535; }
+.order-card__proof {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(14, 203, 129, 0.45);
+  background: rgba(14, 203, 129, 0.12);
+  color: #0ecb81;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.order-card__proof:hover:not(:disabled) {
+  background: rgba(14, 203, 129, 0.22);
+  border-color: rgba(14, 203, 129, 0.65);
+}
+.order-card__proof:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.order-card__copy-ussd {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #3d4f5c;
+  background: rgba(132, 142, 156, 0.12);
+  color: #aeb4bc;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.order-card__copy-ussd:hover {
+  border-color: #5e6673;
+  color: #eaecef;
+  background: rgba(132, 142, 156, 0.2);
+}
 @media (max-width: 400px) {
   .order-card__row { grid-template-columns: 1fr; gap: 2px; }
   .order-card__row dt { margin-bottom: -2px; }

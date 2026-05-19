@@ -4,7 +4,7 @@
       <h1>Codes USSD mobile</h1>
       <div class="hdr__links">
         <router-link class="link" to="/orders">Orders MGA</router-link>
-        <router-link class="link" to="/">← Reçu</router-link>
+        <router-link class="link" to="/receipt">← Reçu</router-link>
       </div>
     </header>
 

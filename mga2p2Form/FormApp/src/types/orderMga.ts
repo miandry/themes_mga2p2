@@ -16,9 +16,8 @@ export interface OrderMgaRow {
   bank_name?: string | null;
   payment_type?: string | null;
   status?: string | null;
-  /** Detail API only */
   user_info?: string | null;
   receipt_filename?: string | null;
-  /** Detail API: public URL path for field_image (payment proof) */
+  /** Public URL path for field_image (payment proof); list + detail API */
   payment_proof_url?: string | null;
 }

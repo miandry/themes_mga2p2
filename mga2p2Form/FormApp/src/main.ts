@@ -9,10 +9,12 @@ import MobileUssdSettingsPage from './views/MobileUssdSettingsPage.vue';
 const router = createRouter({
   history: createWebHistory('/form'),
   routes: [
+    { path: '/', redirect: '/orders' },
     { path: '/settings/mobile-ussd', name: 'settings-mobile-ussd', component: MobileUssdSettingsPage },
     { path: '/orders/:nid(\\d+)', name: 'order-mga-detail', component: OrderMgaDetailPage },
     { path: '/orders', name: 'orders-mga', component: OrderMgaListPage },
-    { path: '/:pathMatch(.*)*', name: 'receipt', component: ReceiptFormPage },
+    { path: '/receipt', name: 'receipt', component: ReceiptFormPage },
+    { path: '/:pathMatch(.*)*', redirect: '/orders' },
   ],
 });
 
