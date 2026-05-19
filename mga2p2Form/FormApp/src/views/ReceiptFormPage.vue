@@ -221,7 +221,34 @@ function strFromExtracted(v: unknown): string {
   return String(v).trim();
 }
 
+/** Same prefix rules as AiReceiptExtractor (Madagascar P2P). Phone wins over bank_name. */
+function inferPaymentTypeFromMgPhone(phone: string): '' | 'mvola' | 'orange' {
+  let d = phone.replace(/\D+/g, '');
+  if (d.startsWith('261')) d = d.slice(3);
+  if (d.length >= 3 && d.startsWith('0')) {
+    const p3 = d.slice(0, 3);
+    if (p3 === '032' || p3 === '037') return 'orange';
+    if (p3 === '034' || p3 === '038') return 'mvola';
+    return '';
+  }
+  if (d.length >= 2 && d.startsWith('3')) {
+    const p3 = `0${d.slice(0, 2)}`;
+    if (p3 === '032' || p3 === '037') return 'orange';
+    if (p3 === '034' || p3 === '038') return 'mvola';
+  }
+  return '';
+}
+
+function inferMgBankDisplayFromPhone(phone: string): string {
+  const t = inferPaymentTypeFromMgPhone(phone);
+  if (t === 'mvola') return 'MVola';
+  if (t === 'orange') return 'Orange Money';
+  return '';
+}
+
 function guessPaymentType(extracted: Record<string, unknown>): '' | 'mvola' | 'orange' {
+  const fromPhone = inferPaymentTypeFromMgPhone(strFromExtracted(extracted.phone));
+  if (fromPhone) return fromPhone;
   const bank = strFromExtracted(extracted.bank_name).toLowerCase();
   if (bank.includes('mvola') || bank.includes('m-vola')) return 'mvola';
   if (bank.includes('orange')) return 'orange';
@@ -276,11 +303,13 @@ function resetForm() {
 
 function initFormFromExtracted(extracted: Record<string, unknown>) {
   formMontant.value = strFromExtracted(extracted.montant);
-  formPhone.value = strFromExtracted(extracted.phone);
+  const phone = strFromExtracted(extracted.phone);
+  formPhone.value = phone;
   formName.value = strFromExtracted(extracted.name);
   formReference.value = strFromExtracted(extracted.reference);
   formCurrency.value = strFromExtracted(extracted.currency);
-  formBankName.value = strFromExtracted(extracted.bank_name);
+  const inferredBank = inferMgBankDisplayFromPhone(phone);
+  formBankName.value = inferredBank || strFromExtracted(extracted.bank_name);
   formPaymentType.value = guessPaymentType(extracted);
   formRemainMinutes.value = 20;
   formUserInfo.value = '';
