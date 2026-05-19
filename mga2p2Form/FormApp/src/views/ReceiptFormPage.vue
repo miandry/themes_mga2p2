@@ -4,6 +4,7 @@
       <h1>Receipt scan</h1>
       <nav class="nav-links">
         <router-link class="link" to="/orders">Orders MGA</router-link>
+        <router-link class="link" to="/settings/mobile-ussd">Codes USSD</router-link>
         <a class="link" :href="p2pHome">← P2P app</a>
       </nav>
     </header>
@@ -17,7 +18,15 @@
       </label>
       <div v-if="fileName" class="fname">{{ fileName }}</div>
       <div v-if="previewUrl" class="preview-wrap">
-        <img :src="previewUrl" alt="Preview" class="preview" />
+        <button
+          type="button"
+          class="preview-btn"
+          aria-label="Agrandir l’aperçu"
+          @click="previewLightboxOpen = true"
+        >
+          <img :src="previewUrl" alt="" class="preview" />
+        </button>
+        <p class="preview-hint">Cliquer l’image pour l’afficher en grand.</p>
       </div>
       <button type="button" class="primary" :disabled="!file || loadingAnalyze" @click="runAnalyze">
         {{ loadingAnalyze ? 'Analyse de l’image…' : 'Analyser l’image' }}
@@ -162,10 +171,31 @@
       </div>
     </div>
   </Teleport>
+
+  <Teleport to="body">
+    <div
+      v-if="previewLightboxOpen && previewUrl"
+      class="img-lightbox-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Aperçu en grand"
+      @click.self="previewLightboxOpen = false"
+    >
+      <button
+        type="button"
+        class="img-lightbox-close"
+        aria-label="Fermer"
+        @click="previewLightboxOpen = false"
+      >
+        ×
+      </button>
+      <img :src="previewUrl" alt="Aperçu du reçu" class="img-lightbox-img" @click.stop />
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue';
+import { ref, watch, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { apiUrl } from '@/lib/apiUrl';
 
@@ -201,6 +231,7 @@ function guessPaymentType(extracted: Record<string, unknown>): '' | 'mvola' | 'o
 const file = ref<File | null>(null);
 const fileName = ref('');
 const previewUrl = ref('');
+const previewLightboxOpen = ref(false);
 const loadingAnalyze = ref(false);
 const loadingSave = ref(false);
 const error = ref('');
@@ -255,6 +286,20 @@ function initFormFromExtracted(extracted: Record<string, unknown>) {
   formUserInfo.value = '';
 }
 
+function onPreviewLightboxEscape(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    previewLightboxOpen.value = false;
+  }
+}
+
+watch(previewLightboxOpen, (open) => {
+  if (open) {
+    window.addEventListener('keydown', onPreviewLightboxEscape);
+  } else {
+    window.removeEventListener('keydown', onPreviewLightboxEscape);
+  }
+});
+
 function onFile(ev: Event) {
   const input = ev.target as HTMLInputElement;
   const f = input.files?.[0] ?? null;
@@ -263,6 +308,7 @@ function onFile(ev: Event) {
   extractedPreview.value = null;
   error.value = '';
   resetForm();
+  previewLightboxOpen.value = false;
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
   previewUrl.value = f && f.type.startsWith('image/') ? URL.createObjectURL(f) : '';
 }
@@ -533,6 +579,8 @@ function formatDate(ts: unknown): string {
 }
 
 onUnmounted(() => {
+  previewLightboxOpen.value = false;
+  window.removeEventListener('keydown', onPreviewLightboxEscape);
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
 });
 </script>
@@ -600,7 +648,64 @@ onUnmounted(() => {
 .file-btn:hover { border-color: #f0b90b; color: #f0b90b; }
 .fname { margin-top: 10px; font-size: 13px; color: #848e9c; word-break: break-all; }
 .preview-wrap { margin: 14px 0; }
-.preview { max-width: 100%; max-height: 320px; border-radius: 8px; border: 1px solid #2b3139; }
+.preview-btn {
+  display: block;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  cursor: zoom-in;
+  border-radius: 8px;
+  max-width: 100%;
+}
+.preview-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: #5e6673;
+}
+.preview { max-width: 100%; max-height: 320px; border-radius: 8px; border: 1px solid #2b3139; display: block; }
+.img-lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px 16px;
+  box-sizing: border-box;
+}
+.img-lightbox-close {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 10001;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #3d4f5c;
+  border-radius: 10px;
+  background: #1e2329;
+  color: #eaecef;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.img-lightbox-close:hover {
+  border-color: #f0b90b;
+  color: #f0b90b;
+}
+.img-lightbox-img {
+  max-width: min(96vw, 1200px);
+  max-height: calc(100vh - 32px);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+}
 .primary {
   margin-top: 8px;
   width: 100%;

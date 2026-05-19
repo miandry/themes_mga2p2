@@ -10,6 +10,16 @@ body {
   color: #EAECEF;
 }
 
+html,
+body,
+#app {
+  height: 100%;
+}
+
+ion-app {
+  height: 100%;
+}
+
 /* ── Utility classes ─────────────────────────────────────── */
 .text-buy   { color: #0ECB81 !important; }
 .text-sell  { color: #F6465D !important; }
@@ -99,6 +109,13 @@ ion-toolbar {
   --background: #0B0E11;
   --color: #EAECEF;
   --border-color: #2B3139;
+}
+
+/* Space for App.vue mobile menu button (only pages inside main shell) */
+@media (max-width: 899px) {
+  .p2p-main ion-page > ion-header ion-toolbar {
+    --padding-start: 52px;
+  }
 }
 ion-item {
   --background: #1E2329;

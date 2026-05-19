@@ -2,7 +2,10 @@
   <div class="wrap">
     <header class="hdr">
       <h1>Orders MGA</h1>
-      <router-link class="link" to="/">← Reçu</router-link>
+      <div class="hdr__links">
+        <router-link class="link" to="/settings/mobile-ussd">Codes USSD</router-link>
+        <router-link class="link" to="/">← Reçu</router-link>
+      </div>
     </header>
 
     <section class="card controls">
@@ -214,8 +217,17 @@ import {
   resyncOrderMgaWebPushIfOptedIn,
   unregisterOrderMgaWebPush,
 } from '@/lib/orderPush';
+import { readMobileUssdPatternsFromStorage, applyMobileUssdPlaceholders } from '@/lib/mobileUssd';
 
 const PAGE_SIZE = 5;
+
+const mobileUssdPatterns = ref(readMobileUssdPatternsFromStorage());
+
+function refreshPatternsFromStorage(): void {
+  const p = readMobileUssdPatternsFromStorage();
+  mobileUssdPatterns.value.mvola = p.mvola;
+  mobileUssdPatterns.value.orange = p.orange;
+}
 
 const rows = ref<OrderMgaRow[]>([]);
 const loading = ref(false);
@@ -278,28 +290,26 @@ function digitsOnly(s: string | null | undefined): string {
 }
 
 /**
- * Lien tel: pour code MVola #111*1*3*2*{téléphone}*{montant}*2*1# (téléphone et montant = chiffres uniquement).
- * Affiché côté liste uniquement si statut en_cours (voir template).
+ * Lien tel: MVola — modèle configurable (NUM, MONTANT). Liste: en_cours uniquement.
  */
 function mvolaItemPayTelHref(row: OrderMgaRow): string | null {
   if (row.payment_type !== 'mvola') return null;
   const phone = digitsOnly(row.phone);
   const montant = digitsOnly(row.montant);
   if (!phone || !montant) return null;
-  const ussd = `#111*1*3*2*${phone}*${montant}*2*1#`;
+  const ussd = applyMobileUssdPlaceholders(mobileUssdPatterns.value.mvola, phone, montant);
   return `tel:${ussd.replace(/#/g, '%23')}`;
 }
 
 /**
- * Lien tel: pour Orange Money #144*1*1*{téléphone}*{téléphone}*{montant}*2# (chiffres uniquement).
- * Affiché côté liste uniquement si statut en_cours (voir template).
+ * Lien tel: Orange Money — modèle configurable (NUMÉRO / NUMERO / NUM, MONTANT).
  */
 function orangeItemPayTelHref(row: OrderMgaRow): string | null {
   if (row.payment_type !== 'orange') return null;
   const phone = digitsOnly(row.phone);
   const montant = digitsOnly(row.montant);
   if (!phone || !montant) return null;
-  const ussd = `#144*1*1*${phone}*${phone}*${montant}*2#`;
+  const ussd = applyMobileUssdPlaceholders(mobileUssdPatterns.value.orange, phone, montant);
   return `tel:${ussd.replace(/#/g, '%23')}`;
 }
 
@@ -385,6 +395,7 @@ async function load(reset = true) {
   }
   error.value = '';
   try {
+    refreshPatternsFromStorage();
     const params = new URLSearchParams();
     params.set('limit', String(PAGE_SIZE));
     params.set('offset', reset ? '0' : String(rows.value.length));
@@ -398,11 +409,13 @@ async function load(reset = true) {
     const r = await fetch(apiUrl(`mga2p2-form/api/orders?${params.toString()}`), { credentials: 'same-origin' });
     const j = await parseJsonResponse(r);
     if (!r.ok) throw new Error((j as { error?: string }).error || r.statusText);
-    const data = (j as { data?: OrderMgaRow[] }).data ?? [];
+    const jPayload = j as {
+      data?: OrderMgaRow[];
+      has_more?: boolean;
+    };
+    const data = jPayload.data ?? [];
     const hm =
-      typeof (j as { has_more?: boolean }).has_more === 'boolean'
-        ? (j as { has_more: boolean }).has_more
-        : data.length === PAGE_SIZE;
+      typeof jPayload.has_more === 'boolean' ? jPayload.has_more : data.length === PAGE_SIZE;
     if (reset) {
       rows.value = data;
       hasMore.value = hm;
@@ -469,7 +482,8 @@ onUnmounted(() => {
 
 <style scoped>
 .wrap { max-width: 960px; margin: 0 auto; padding: 14px 12px 32px; }
-.hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+.hdr__links { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 .hdr h1 { font-size: 17px; margin: 0; font-weight: 800; color: #f0b90b; }
 .link { color: #848e9c; text-decoration: none; font-size: 12px; }
 .link:hover { color: #eaecef; }

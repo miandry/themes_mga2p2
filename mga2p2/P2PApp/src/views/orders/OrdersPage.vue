@@ -55,10 +55,7 @@
         />
       </div>
 
-      <div style="height:80px"></div>
     </ion-content>
-
-    <BottomNav active="orders" />
   </ion-page>
 </template>
 
@@ -74,7 +71,6 @@ import {
 } from '@ionic/vue';
 import { receiptOutline } from 'ionicons/icons';
 import { useOrderStore } from '@/stores/orders';
-import BottomNav from '@/components/common/BottomNav.vue';
 import OrderCard from '@/components/common/OrderCard.vue';
 
 const LS_POLL_ON = 'mga2p2_orders_poll_on';

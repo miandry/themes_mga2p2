@@ -120,10 +120,7 @@
         @didDismiss="showLogoutAlert = false"
       ></ion-alert>
 
-      <div style="height:80px"></div>
     </ion-content>
-
-    <BottomNav active="account" />
   </ion-page>
 </template>
 
@@ -143,8 +140,6 @@ import { useAuthStore } from '@/stores/auth';
 import { useOrderStore } from '@/stores/orders';
 import { useAdStore } from '@/stores/ads';
 import { fetchBalance, fetchAccount, binanceConfigured } from '@/services/binance';
-import BottomNav from '@/components/common/BottomNav.vue';
-
 const router = useRouter();
 const authStore = useAuthStore();
 const orderStore = useOrderStore();

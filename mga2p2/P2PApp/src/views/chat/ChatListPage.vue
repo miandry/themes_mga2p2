@@ -45,10 +45,7 @@
         </div>
       </div>
 
-      <div style="height:80px"></div>
     </ion-content>
-
-    <BottomNav active="chat" />
   </ion-page>
 </template>
 
@@ -61,8 +58,6 @@ import {
 } from '@ionic/vue';
 import { chatbubblesOutline } from 'ionicons/icons';
 import { useChatStore } from '@/stores/chat';
-import BottomNav from '@/components/common/BottomNav.vue';
-
 const router = useRouter();
 const chatStore = useChatStore();
 

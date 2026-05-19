@@ -111,10 +111,7 @@
         </div>
       </div>
 
-      <div style="height:80px"></div>
     </ion-content>
-
-    <BottomNav active="dashboard" />
   </ion-page>
 </template>
 
@@ -134,7 +131,6 @@ import { useAuthStore } from '@/stores/auth';
 import { useOrderStore } from '@/stores/orders';
 import { useAdStore } from '@/stores/ads';
 import { useChatStore } from '@/stores/chat';
-import BottomNav from '@/components/common/BottomNav.vue';
 import OrderCard from '@/components/common/OrderCard.vue';
 
 const router = useRouter();

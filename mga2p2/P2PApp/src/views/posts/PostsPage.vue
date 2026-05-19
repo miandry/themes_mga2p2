@@ -91,10 +91,7 @@
         </div>
       </div>
 
-      <div style="height:80px"></div>
     </ion-content>
-
-    <BottomNav active="ads" />
   </ion-page>
 </template>
 
@@ -108,8 +105,6 @@ import {
 } from '@ionic/vue';
 import { newspaperOutline, createOutline, alertCircleOutline } from 'ionicons/icons';
 import { useAdStore } from '@/stores/ads';
-import BottomNav from '@/components/common/BottomNav.vue';
-
 const router = useRouter();
 const adStore = useAdStore();
 const filter = ref<'all' | 'BUY' | 'SELL'>('all');

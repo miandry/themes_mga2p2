@@ -6,7 +6,10 @@
         <h1 v-if="order">Commande #{{ order.nid }}</h1>
         <h1 v-else>Commande</h1>
       </div>
-      <router-link class="link" to="/">Reçu</router-link>
+      <div class="hdr__right">
+        <router-link class="link" to="/settings/mobile-ussd">Codes USSD</router-link>
+        <router-link class="link" to="/">Reçu</router-link>
+      </div>
     </header>
 
     <section class="card push-card">
@@ -413,6 +416,13 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 6px;
   min-width: 0;
+}
+.hdr__right {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  flex-shrink: 0;
 }
 .hdr h1 {
   margin: 0;
