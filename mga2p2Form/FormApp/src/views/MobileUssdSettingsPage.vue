@@ -2,10 +2,6 @@
   <div class="wrap">
     <header class="hdr">
       <h1>Codes USSD mobile</h1>
-      <div class="hdr__links">
-        <router-link class="link" to="/orders">Orders MGA</router-link>
-        <router-link class="link" to="/receipt">← Reçu</router-link>
-      </div>
     </header>
 
     <section class="card">
@@ -210,19 +206,6 @@ onActivated(() => {
   margin: 0;
   font-weight: 800;
   color: #f0b90b;
-}
-.hdr__links {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.link {
-  color: #848e9c;
-  text-decoration: none;
-  font-size: 12px;
-}
-.link:hover {
-  color: #eaecef;
 }
 .card {
   background: #1e2329;

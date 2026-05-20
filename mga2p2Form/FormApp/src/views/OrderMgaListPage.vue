@@ -7,11 +7,12 @@
           <p class="orders-head__sub">Montants en Ar (ariary) · mobile money</p>
         </div>
         <div class="orders-head__links">
+          <router-link class="top-link top-link--scan" :to="{ name: 'receipt' }">
+            Scan reçu
+          </router-link>
           <button type="button" class="icon-btn" :disabled="loading" title="Rafraîchir" @click="() => load(true)">
             ↻
           </button>
-          <router-link class="link" to="/settings/mobile-ussd">Codes USSD</router-link>
-          <router-link class="link" to="/receipt">Reçu</router-link>
         </div>
       </div>
 
@@ -24,6 +25,15 @@
           @click="listSegment = 'active'"
         >
           En cours
+        </button>
+        <button
+          type="button"
+          role="tab"
+          class="seg-btn"
+          :class="{ 'seg-btn--on': listSegment === 'pay_in_progress' }"
+          @click="listSegment = 'pay_in_progress'"
+        >
+          Payé en cours
         </button>
         <button
           type="button"
@@ -169,22 +179,24 @@
           </div>
 
           <div class="bcard__actions" @click.stop>
-            <a
+            <button
               v-if="rowStatus(row) === 'en_cours' && mvolaItemPayTelHref(row)"
+              type="button"
               class="act act--mvola"
-              :href="mvolaItemPayTelHref(row)!"
-              rel="nofollow"
+              :disabled="markPayeBusyNid !== null"
+              @click="onUssdPayClick(row, 'mvola')"
             >
               MVola
-            </a>
-            <a
+            </button>
+            <button
               v-if="rowStatus(row) === 'en_cours' && orangeItemPayTelHref(row)"
+              type="button"
               class="act act--orange"
-              :href="orangeItemPayTelHref(row)!"
-              rel="nofollow"
+              :disabled="markPayeBusyNid !== null"
+              @click="onUssdPayClick(row, 'orange')"
             >
               Orange
-            </a>
+            </button>
             <button
               v-if="rowStatus(row) !== 'paye'"
               type="button"
@@ -251,7 +263,7 @@ function readPollSec(): PollSec {
 }
 
 const router = useRouter();
-const listSegment = ref<'active' | 'completed' | 'all'>('active');
+const listSegment = ref<'active' | 'pay_in_progress' | 'completed' | 'all'>('active');
 const pollEnabled = ref(readPollOn());
 const pollIntervalSec = ref<PollSec>(readPollSec());
 
@@ -300,8 +312,9 @@ function formatPollLabel(sec: number): string {
 }
 
 /** Maps UI segment → API `status` query (empty = all). */
-function apiStatusForList(): '' | 'en_cours' | 'paye' {
+function apiStatusForList(): '' | 'en_cours' | 'pay_en_cours' | 'paye' {
   if (listSegment.value === 'active') return 'en_cours';
+  if (listSegment.value === 'pay_in_progress') return 'pay_en_cours';
   if (listSegment.value === 'completed') return 'paye';
   return '';
 }
@@ -348,7 +361,7 @@ function paymentSideClass(row: OrderMgaRow): string {
 
 function statusBadgeClass(row: OrderMgaRow): string {
   const s = rowStatus(row);
-  if (s === 'paye') return 'badge-completed';
+  if (s === 'paye' || s === 'pay_en_cours') return 'badge-completed';
   if (s === 'archive') return 'badge-cancelled';
   return 'badge-pending';
 }
@@ -449,6 +462,7 @@ async function copyUssdForRow(row: OrderMgaRow) {
 
 function formatStatus(s: string | null | undefined): string {
   if (s === 'paye') return 'Payé';
+  if (s === 'pay_en_cours') return 'Payé en cours';
   if (s === 'archive') return 'Archivée';
   return 'En cours';
 }
@@ -469,10 +483,10 @@ function remainingFor(row: OrderMgaRow): number {
   return Math.max(0, row.deadline - nowSec.value);
 }
 
-async function markPayeDirect(nid: number) {
+async function setOrderStatus(nid: number, status: 'paye' | 'pay_en_cours', askConfirm: boolean, confirmText: string) {
   if (markPayeBusyNid.value !== null) return;
   markPayeError.value = '';
-  if (!window.confirm(`Marquer la commande #${nid} comme payée ?`)) {
+  if (askConfirm && !window.confirm(confirmText)) {
     return;
   }
   markPayeBusyNid.value = nid;
@@ -481,7 +495,7 @@ async function markPayeDirect(nid: number) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ nid, status: 'paye' }),
+      body: JSON.stringify({ nid, status }),
     });
     const j = await parseJsonResponse(r);
     if (!r.ok) throw new Error((j as { error?: string }).error || r.statusText);
@@ -490,6 +504,23 @@ async function markPayeDirect(nid: number) {
     markPayeError.value = e instanceof Error ? e.message : 'Mise à jour impossible';
   } finally {
     markPayeBusyNid.value = null;
+  }
+}
+
+async function markPayeDirect(nid: number) {
+  await setOrderStatus(nid, 'paye', true, `Marquer la commande #${nid} comme payée ?`);
+}
+
+async function onUssdPayClick(row: OrderMgaRow, mode: 'mvola' | 'orange') {
+  const href = mode === 'mvola' ? mvolaItemPayTelHref(row) : orangeItemPayTelHref(row);
+  if (!href) return;
+  const ok = window.confirm(
+    `Passer la commande #${row.nid} au statut "Payé en cours" et ouvrir le code USSD ${mode === 'mvola' ? 'MVola' : 'Orange'} ?`,
+  );
+  if (!ok) return;
+  await setOrderStatus(row.nid, 'pay_en_cours', false, '');
+  if (!markPayeError.value) {
+    window.location.href = href;
   }
 }
 
@@ -699,6 +730,27 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.top-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid #2b3139;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+}
+.top-link--scan {
+  color: #f0b90b;
+  border-color: rgba(240, 185, 11, 0.45);
+  background: rgba(240, 185, 11, 0.08);
+}
+.top-link--scan:hover {
+  filter: brightness(1.08);
 }
 
 .link {

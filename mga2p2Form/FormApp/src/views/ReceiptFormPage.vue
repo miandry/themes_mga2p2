@@ -3,9 +3,7 @@
     <header class="hdr">
       <h1>Receipt scan</h1>
       <nav class="nav-links">
-        <router-link class="link" to="/orders">Orders MGA</router-link>
-        <router-link class="link" to="/settings/mobile-ussd">Codes USSD</router-link>
-        <a class="link" :href="p2pHome">← P2P app</a>
+        <a class="link" :href="p2pHome">← App P2P</a>
       </nav>
     </header>
 
@@ -88,6 +86,7 @@
       <button type="button" class="primary save-btn" :disabled="loadingSave" @click="runSave">
         {{ loadingSave ? 'Enregistrement…' : 'Enregistrer en base de données' }}
       </button>
+      <p v-if="saveNotice" class="hint save-notice">{{ saveNotice }}</p>
     </section>
   </div>
 
@@ -154,19 +153,11 @@
         </table>
         <p v-if="duplicateJustCopied" class="dup-note">
           Les champs montant, téléphone et nom du premier enregistrement ont été copiés dans le formulaire.
-          Le fichier reste en doublon tant que vous n’utilisez pas un nom unique ou une autre image.
-        </p>
-        <p v-if="duplicateModal.order_nid_if_created != null" class="dup-race">
-          Le nœud commande order_mga
-          <span class="mono">#{{ duplicateModal.order_nid_if_created }}</span>
-          est déjà créé. « Enregistrer avec un nom unique » mettra à jour l’historique reçu seulement (sans nouvelle commande).
+          Le nom de fichier reste bloqué tant que vous n’utilisez pas une autre image (ou un autre nom de fichier).
         </p>
         <div class="dup-actions">
           <button type="button" class="ghost" @click="closeDuplicateModal">Annuler</button>
           <button type="button" class="ghost" @click="applyFirstFieldsFromDuplicateModal">Copier le premier enregistrement</button>
-          <button type="button" class="primary dup-primary" :disabled="loadingSave" @click="saveWithUniqueFilename">
-            {{ loadingSave ? 'Enregistrement…' : 'Enregistrer avec un nom unique' }}
-          </button>
         </div>
       </div>
     </div>
@@ -262,6 +253,7 @@ const previewLightboxOpen = ref(false);
 const loadingAnalyze = ref(false);
 const loadingSave = ref(false);
 const error = ref('');
+const saveNotice = ref('');
 const extractedPreview = ref<{ extracted: Record<string, unknown>; filename: string } | null>(null);
 
 const formMontant = ref('');
@@ -280,8 +272,6 @@ type DuplicateModalPayload = {
   first_montant: string | null;
   first_phone: string | null;
   first_name: string | null;
-  order_nid_if_created?: number;
-  order_path_if_created?: string;
 };
 
 const duplicateModal = ref<DuplicateModalPayload | null>(null);
@@ -299,6 +289,7 @@ function resetForm() {
   formPaymentType.value = '';
   formRemainMinutes.value = 20;
   formUserInfo.value = '';
+  saveNotice.value = '';
 }
 
 function initFormFromExtracted(extracted: Record<string, unknown>) {
@@ -342,6 +333,42 @@ function onFile(ev: Event) {
   previewUrl.value = f && f.type.startsWith('image/') ? URL.createObjectURL(f) : '';
 }
 
+type BinanceSaveMeta = {
+  status?: string;
+  order_number?: string;
+  candidates?: number;
+  message?: string;
+};
+
+/** Reads `binance` from order-save / receipt-save JSON and updates reference + notice. */
+function applyBinanceSaveNotice(payload: unknown): void {
+  const o = payload as Record<string, unknown>;
+  const b = o.binance as BinanceSaveMeta | undefined | null;
+  if (!b || typeof b !== 'object') return;
+  const status = String(b.status || '');
+  if (status === 'ok' && b.order_number) {
+    formReference.value = String(b.order_number);
+    saveNotice.value = `Ordre Binance trouvé — référence mise à jour : ${String(b.order_number)}.`;
+    return;
+  }
+  if (status === 'ambiguous') {
+    saveNotice.value =
+      (typeof b.message === 'string' && b.message.trim()) ||
+      `Plusieurs ordres Binance (${b.candidates ?? '?'}) ont le même montant ; la référence n’a pas été modifiée.`;
+    return;
+  }
+  if (status === 'none') {
+    saveNotice.value =
+      (typeof b.message === 'string' && b.message.trim()) ||
+      'Aucun ordre Binance récent avec ce montant (partie entière).';
+    return;
+  }
+  if (status === 'error' && typeof b.message === 'string' && b.message.trim()) {
+    saveNotice.value = `Binance : ${b.message.trim()}`;
+    return;
+  }
+}
+
 async function runAnalyze() {
   if (!file.value) return;
   const fd = new FormData();
@@ -370,23 +397,6 @@ async function runAnalyze() {
   } finally {
     loadingAnalyze.value = false;
   }
-}
-
-function truncateFilenameMax(name: string, max: number): string {
-  if (name.length <= max) return name;
-  return name.slice(0, max);
-}
-
-function suggestUniqueFilename(filename: string): string {
-  const base = filename.trim() === '' ? 'upload' : filename.trim();
-  const rnd = Math.random().toString(36).slice(2, 9);
-  const dot = base.lastIndexOf('.');
-  if (dot <= 0) {
-    return truncateFilenameMax(`${base}_${rnd}`, 255);
-  }
-  const stem = base.slice(0, dot);
-  const ext = base.slice(dot);
-  return truncateFilenameMax(`${stem}_${rnd}${ext}`, 255);
 }
 
 function displayField(v: string | null | undefined): string {
@@ -471,40 +481,6 @@ function applyFirstFieldsFromDuplicateModal() {
   duplicateJustCopied.value = true;
 }
 
-async function executeReceiptHistoryOnly(order_nid: number, order_path: string | undefined): Promise<void> {
-  const payload = buildSavePayload();
-  if (!payload || !extractedPreview.value) return;
-
-  const rRec = await fetch(apiUrl('mga2p2/form-api/receipt-save'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'same-origin',
-    body: JSON.stringify(payload),
-  });
-  const jRec = await parseJsonResponse(rRec);
-
-  if (rRec.status === 409 && (jRec as { duplicate?: boolean }).duplicate) {
-    const dup = parseDuplicatePayload(jRec);
-    if (dup) {
-      duplicateModal.value = {
-        ...dup,
-        order_nid_if_created: order_nid,
-        order_path_if_created: order_path,
-      };
-    }
-    error.value =
-      (jRec as { error?: string }).error?.trim() ||
-      'Historique reçus : doublon (même fichier). Utilisez la fenêtre pour enregistrer avec un nom unique.';
-    return;
-  }
-
-  if (!rRec.ok) {
-    throw new Error((jRec as { error?: string }).error || rRec.statusText);
-  }
-
-  await router.push({ name: 'orders-mga' });
-}
-
 async function executeSave(): Promise<void> {
   const payload = buildSavePayload();
   if (!payload || !extractedPreview.value) return;
@@ -519,9 +495,7 @@ async function executeSave(): Promise<void> {
   if (!rOrder.ok) {
     throw new Error((jOrder as { error?: string }).error || rOrder.statusText);
   }
-  const order = jOrder as { nid: number; path?: string; title?: string };
-  const order_nid = order.nid;
-  const order_path = order.path;
+  applyBinanceSaveNotice(jOrder);
 
   try {
     const rRec = await fetch(apiUrl('mga2p2/form-api/receipt-save'), {
@@ -534,15 +508,11 @@ async function executeSave(): Promise<void> {
     if (rRec.status === 409 && (jRec as { duplicate?: boolean }).duplicate) {
       const dup = parseDuplicatePayload(jRec);
       if (dup) {
-        duplicateModal.value = {
-          ...dup,
-          order_nid_if_created: order_nid,
-          order_path_if_created: order_path,
-        };
+        duplicateModal.value = dup;
       }
       error.value =
         (jRec as { error?: string }).error?.trim() ||
-        'Historique reçus : doublon (même fichier). Utilisez la fenêtre pour enregistrer avec un nom unique.';
+        'Historique reçus : doublon (même fichier). Utilisez une autre image.';
       return;
     }
   }
@@ -559,41 +529,16 @@ async function runSave() {
   if (!extractedPreview.value) return;
   loadingSave.value = true;
   error.value = '';
+  saveNotice.value = '';
   duplicateJustCopied.value = false;
   try {
     const dup = await checkDuplicate(extractedPreview.value.filename);
     if (dup) {
       duplicateModal.value = dup;
+      error.value = 'Doublon détecté : ce nom de fichier existe déjà. Utilisez une autre image.';
       return;
     }
     await executeSave();
-  } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : 'Échec enregistrement';
-  } finally {
-    loadingSave.value = false;
-  }
-}
-
-async function saveWithUniqueFilename() {
-  if (!extractedPreview.value || loadingSave.value) return;
-  const snap = duplicateModal.value;
-  const raceNid = snap?.order_nid_if_created;
-  const racePath = snap?.order_path_if_created;
-  duplicateModal.value = null;
-  duplicateJustCopied.value = false;
-  extractedPreview.value = {
-    ...extractedPreview.value,
-    filename: suggestUniqueFilename(extractedPreview.value.filename),
-  };
-  loadingSave.value = true;
-  error.value = '';
-  try {
-    if (raceNid !== undefined) {
-      await executeReceiptHistoryOnly(raceNid, racePath);
-    }
-    else {
-      await executeSave();
-    }
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Échec enregistrement';
   } finally {
@@ -759,6 +704,12 @@ onUnmounted(() => {
   cursor: pointer;
 }
 .err { color: #f6465d; font-size: 14px; margin-top: 12px; }
+.save-notice {
+  margin-top: 12px;
+  color: #0ecb81;
+  font-size: 13px;
+  line-height: 1.45;
+}
 .mono { font-family: ui-monospace, monospace; }
 .dup-backdrop {
   position: fixed;

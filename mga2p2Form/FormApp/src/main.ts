@@ -5,6 +5,8 @@ import ReceiptFormPage from './views/ReceiptFormPage.vue';
 import OrderMgaListPage from './views/OrderMgaListPage.vue';
 import OrderMgaDetailPage from './views/OrderMgaDetailPage.vue';
 import MobileUssdSettingsPage from './views/MobileUssdSettingsPage.vue';
+import OrdresAchatPage from './views/OrdresAchatPage.vue';
+import OrdresAchatDetailPage from './views/OrdresAchatDetailPage.vue';
 import FormLoginPage from './views/FormLoginPage.vue';
 import { sessionChecked, loggedIn, fetchSession } from './lib/formSession';
 
@@ -17,6 +19,13 @@ const router = createRouter({
     { path: '/orders/:nid(\\d+)', name: 'order-mga-detail', component: OrderMgaDetailPage },
     { path: '/orders', name: 'orders-mga', component: OrderMgaListPage },
     { path: '/receipt', name: 'receipt', component: ReceiptFormPage },
+    {
+      path: '/ordres-achat/:orderNo',
+      name: 'ordres-achat-detail',
+      component: OrdresAchatDetailPage,
+    },
+    { path: '/ordres-achat', name: 'ordres-achat', component: OrdresAchatPage },
+    { path: '/binance-orders', redirect: '/ordres-achat' },
     { path: '/:pathMatch(.*)*', redirect: '/orders' },
   ],
 });
