@@ -10,10 +10,24 @@
     <section class="card">
       <h2>Upload image</h2>
       <p class="hint">JPEG, PNG ou WebP — max 8 Mo. Analysez l’image, complétez le formulaire, puis enregistrez.</p>
-      <label class="file-label">
-        <input type="file" accept="image/jpeg,image/png,image/webp" class="file-input" @change="onFile" />
-        <span class="file-btn">Choisir un fichier</span>
-      </label>
+      <div
+        class="drop-zone"
+        :class="{ 'drop-zone--active': dropActive }"
+        @dragenter.prevent="onDragEnter"
+        @dragover.prevent="onDragOver"
+        @dragleave.prevent="onDragLeave"
+        @drop.prevent="onDrop"
+      >
+        <p class="drop-zone__lead">
+          <span class="drop-zone__ico" aria-hidden="true">↓</span>
+          Glisser-déposer une image ici
+        </p>
+        <p class="drop-zone__or">ou</p>
+        <label class="file-label">
+          <input type="file" accept="image/jpeg,image/png,image/webp" class="file-input" @change="onFile" />
+          <span class="file-btn">Choisir un fichier</span>
+        </label>
+      </div>
       <div v-if="fileName" class="fname">{{ fileName }}</div>
       <div v-if="previewUrl" class="preview-wrap">
         <button
@@ -276,6 +290,12 @@ type DuplicateModalPayload = {
 
 const duplicateModal = ref<DuplicateModalPayload | null>(null);
 const duplicateJustCopied = ref(false);
+const dropActive = ref(false);
+
+const ACCEPT_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
+let dragDepth = 0;
 
 const p2pHome = apiUrl('dashboard');
 
@@ -320,17 +340,50 @@ watch(previewLightboxOpen, (open) => {
   }
 });
 
-function onFile(ev: Event) {
-  const input = ev.target as HTMLInputElement;
-  const f = input.files?.[0] ?? null;
+function applySelectedFile(f: File) {
+  if (!ACCEPT_IMAGE_TYPES.includes(f.type)) {
+    error.value = 'Format non accepté. Utilisez JPEG, PNG ou WebP.';
+    return;
+  }
+  if (f.size > MAX_IMAGE_BYTES) {
+    error.value = 'Fichier trop volumineux (max 8 Mo).';
+    return;
+  }
   file.value = f;
-  fileName.value = f?.name ?? '';
+  fileName.value = f.name;
   extractedPreview.value = null;
   error.value = '';
   resetForm();
   previewLightboxOpen.value = false;
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
-  previewUrl.value = f && f.type.startsWith('image/') ? URL.createObjectURL(f) : '';
+  previewUrl.value = URL.createObjectURL(f);
+}
+
+function onFile(ev: Event) {
+  const input = ev.target as HTMLInputElement;
+  const f = input.files?.[0];
+  if (f) applySelectedFile(f);
+}
+
+function onDragEnter() {
+  dragDepth++;
+  dropActive.value = true;
+}
+
+function onDragOver() {
+  dropActive.value = true;
+}
+
+function onDragLeave() {
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (dragDepth === 0) dropActive.value = false;
+}
+
+function onDrop(ev: DragEvent) {
+  dragDepth = 0;
+  dropActive.value = false;
+  const f = ev.dataTransfer?.files?.[0];
+  if (f) applySelectedFile(f);
 }
 
 type BinanceSaveMeta = {
@@ -607,6 +660,42 @@ onUnmounted(() => {
   color: #848e9c;
   font-size: 13px;
   word-break: break-all;
+}
+.drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 4px;
+  padding: 28px 20px;
+  border-radius: 12px;
+  border: 2px dashed #2b3139;
+  background: #13161a;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.drop-zone--active {
+  border-color: #f0b90b;
+  background: rgba(240, 185, 11, 0.08);
+}
+.drop-zone__lead {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #eaecef;
+  text-align: center;
+}
+.drop-zone__ico {
+  display: inline-block;
+  margin-right: 6px;
+  color: #f0b90b;
+  font-size: 16px;
+}
+.drop-zone__or {
+  margin: 0;
+  font-size: 12px;
+  color: #5e6673;
 }
 .file-input { position: absolute; width: 0; height: 0; opacity: 0; }
 .file-label { display: inline-block; cursor: pointer; }
