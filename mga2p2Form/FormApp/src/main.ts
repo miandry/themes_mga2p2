@@ -7,6 +7,8 @@ import OrderMgaDetailPage from './views/OrderMgaDetailPage.vue';
 import MobileUssdSettingsPage from './views/MobileUssdSettingsPage.vue';
 import OrdresAchatPage from './views/OrdresAchatPage.vue';
 import OrdresAchatDetailPage from './views/OrdresAchatDetailPage.vue';
+import BinanceAdsPage from './views/BinanceAdsPage.vue';
+import BinanceAdsDetailPage from './views/BinanceAdsDetailPage.vue';
 import FormLoginPage from './views/FormLoginPage.vue';
 import { sessionChecked, loggedIn, fetchSession } from './lib/formSession';
 
@@ -25,6 +27,8 @@ const router = createRouter({
       component: OrdresAchatDetailPage,
     },
     { path: '/ordres-achat', name: 'ordres-achat', component: OrdresAchatPage },
+    { path: '/annonces/:advNo', name: 'annonces-detail', component: BinanceAdsDetailPage },
+    { path: '/annonces', name: 'annonces', component: BinanceAdsPage },
     { path: '/binance-orders', redirect: '/ordres-achat' },
     { path: '/:pathMatch(.*)*', redirect: '/orders' },
   ],
