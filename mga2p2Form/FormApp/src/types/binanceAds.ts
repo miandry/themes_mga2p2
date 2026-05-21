@@ -29,6 +29,33 @@ export interface BinanceAdRow {
 
 export type BinanceAdsSource = 'agent' | 'derived' | 'none';
 
+export interface BinanceMarketPriceRow {
+  advNo: string;
+  price: string;
+  priceNum: number;
+  asset?: string;
+  fiat?: string;
+  surplusAmount?: string;
+  minSingleTransAmount?: string;
+  maxSingleTransAmount?: string;
+  merchant: string;
+  tradeType?: string;
+}
+
+export interface BinanceMarketPricesResponse {
+  data: BinanceMarketPriceRow[];
+  highest: BinanceMarketPriceRow[];
+  lowest: BinanceMarketPriceRow[];
+  total: number;
+  searchTradeType: string;
+  adTradeType?: string;
+  source: string;
+  minPrice?: number | null;
+  maxPrice?: number | null;
+  avgPrice?: number | null;
+  error?: string;
+}
+
 export interface BinanceAdsResponse {
   data: BinanceAdRow[];
   total: number;

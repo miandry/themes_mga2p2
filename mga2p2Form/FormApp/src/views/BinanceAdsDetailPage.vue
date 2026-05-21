@@ -147,9 +147,72 @@
     </template>
 
     <div v-if="priceEditOpen" class="modal-backdrop" @click.self="closePriceEdit">
-      <div class="modal" role="dialog" aria-labelledby="price-edit-title" aria-modal="true">
+      <div class="modal modal--wide" role="dialog" aria-labelledby="price-edit-title" aria-modal="true">
         <h2 id="price-edit-title" class="modal__title">Modifier le prix</h2>
-        <p class="modal__sub">{{ pairLabel(ad!) }} · {{ ad!.fiat }}</p>
+        <p class="modal__sub">
+          {{ pairLabel(ad!) }} · {{ sideLabel(ad!.tradeType) }}
+          <span v-if="marketPrices"> · {{ marketTotalLabel }}</span>
+        </p>
+
+        <section class="market-block">
+          <div class="market-block__head">
+            <h3 class="market-block__title">Prix concurrents P2P</h3>
+            <button
+              type="button"
+              class="btn-refresh"
+              :disabled="marketLoading || savingPrice"
+              title="Rafraîchir"
+              @click="loadMarketPrices"
+            >
+              ↻
+            </button>
+          </div>
+          <p v-if="marketLoading" class="market-hint">Chargement du carnet P2P…</p>
+          <p v-else-if="marketError" class="modal__err">{{ marketError }}</p>
+          <p v-else-if="!marketPrices?.lowest.length && !marketPrices?.highest.length" class="market-hint">
+            Aucun prix concurrent trouvé pour cette paire.
+          </p>
+          <div v-else class="market-cols">
+            <div class="market-col">
+              <h4 class="market-col__title market-col__title--low">5 prix les plus bas</h4>
+              <ul class="market-list">
+                <li v-for="(row, i) in marketPrices!.lowest" :key="'lo-' + row.advNo + i">
+                  <button type="button" class="market-row" @click="applyCompetitorPrice(row.price)">
+                    <span class="market-row__rank">{{ i + 1 }}</span>
+                    <span class="market-row__price">{{ formatAdPrice(row.price) }} {{ ad!.fiat }}</span>
+                    <span class="market-row__meta">{{ row.merchant }}</span>
+                  </button>
+                </li>
+              </ul>
+            </div>
+            <div class="market-col">
+              <h4 class="market-col__title market-col__title--high">5 prix les plus hauts</h4>
+              <ul class="market-list">
+                <li v-for="(row, i) in marketPrices!.highest" :key="'hi-' + row.advNo + i">
+                  <button type="button" class="market-row" @click="applyCompetitorPrice(row.price)">
+                    <span class="market-row__rank">{{ i + 1 }}</span>
+                    <span class="market-row__price">{{ formatAdPrice(row.price) }} {{ ad!.fiat }}</span>
+                    <span class="market-row__meta">{{ row.merchant }}</span>
+                  </button>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <p v-if="marketPrices && !marketLoading" class="market-foot">
+            Cliquez sur un prix pour le reprendre. Votre prix actuel :
+            <strong>{{ formatAdPrice(ad!.price) }} {{ ad!.fiat }}</strong>
+          </p>
+          <router-link
+            class="market-full-link"
+            :to="{
+              name: 'prix-concurrents',
+              query: { asset: ad!.asset, fiat: ad!.fiat, side: ad!.tradeType },
+            }"
+          >
+            Voir la liste complète des prix concurrents →
+          </router-link>
+        </section>
+
         <label class="modal__field">
           <span class="modal__lbl">Nouveau prix ({{ ad!.fiat }})</span>
           <input
@@ -180,9 +243,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { fetchBinanceAdByAdvNo, updateBinanceAdPrice } from '@/lib/binanceAds';
+import { fetchBinanceAdByAdvNo, fetchBinanceAdMarketPrices, updateBinanceAdPrice } from '@/lib/binanceAds';
 import { adStatusKind } from '@/lib/binanceAdsDisplay';
-import type { BinanceAdRow, BinanceAdsSource } from '@/types/binanceAds';
+import type { BinanceAdRow, BinanceAdsSource, BinanceMarketPricesResponse } from '@/types/binanceAds';
 import {
   adStatusDisplay,
   statusBadgeClass,
@@ -205,6 +268,9 @@ const priceDraft = ref('');
 const savingPrice = ref(false);
 const priceEditError = ref('');
 const priceEditSuccess = ref('');
+const marketLoading = ref(false);
+const marketError = ref('');
+const marketPrices = ref<BinanceMarketPricesResponse | null>(null);
 
 const statusInfo = computed(() => (ad.value ? adStatusDisplay(ad.value) : { kind: 'unknown' as const, label: '—', shortLabel: '—' }));
 
@@ -218,6 +284,12 @@ const sourceLabel = computed(() => {
   if (source.value === 'agent') return 'Source : API marchand';
   if (source.value === 'derived') return 'Source : historique ordres';
   return '';
+});
+
+const marketTotalLabel = computed(() => {
+  if (!marketPrices.value) return '';
+  const src = marketPrices.value.source === 'agent' ? 'API marchand' : marketPrices.value.source === 'public' ? 'P2P public' : '';
+  return `${marketPrices.value.total} annonce(s)${src ? ` · ${src}` : ''}`;
 });
 
 async function load() {
@@ -250,12 +322,44 @@ async function load() {
   }
 }
 
+async function loadMarketPrices() {
+  if (!ad.value) return;
+  marketLoading.value = true;
+  marketError.value = '';
+  try {
+    marketPrices.value = await fetchBinanceAdMarketPrices({
+      asset: ad.value.asset,
+      fiat: ad.value.fiat,
+      tradeType: ad.value.tradeType,
+      advNo: ad.value.advNo,
+    });
+    if (marketPrices.value.error && marketPrices.value.total === 0) {
+      marketError.value = marketPrices.value.error;
+    }
+  }
+  catch (e: unknown) {
+    marketError.value = e instanceof Error ? e.message : 'Échec chargement marché';
+    marketPrices.value = null;
+  }
+  finally {
+    marketLoading.value = false;
+  }
+}
+
+function applyCompetitorPrice(price: string) {
+  priceDraft.value = String(price).replace(',', '.');
+  priceEditError.value = '';
+}
+
 function openPriceEdit() {
   if (!ad.value) return;
   priceDraft.value = String(ad.value.price ?? '').replace(',', '.');
   priceEditError.value = '';
   priceEditSuccess.value = '';
+  marketError.value = '';
+  marketPrices.value = null;
   priceEditOpen.value = true;
+  void loadMarketPrices();
 }
 
 function closePriceEdit() {
@@ -263,6 +367,8 @@ function closePriceEdit() {
   priceEditOpen.value = false;
   priceEditError.value = '';
   priceEditSuccess.value = '';
+  marketPrices.value = null;
+  marketError.value = '';
 }
 
 async function savePrice() {
@@ -507,6 +613,11 @@ onMounted(() => {
   padding: 20px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
 }
+.modal--wide {
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
 .modal__title {
   margin: 0 0 4px;
   font-size: 18px;
@@ -580,6 +691,133 @@ onMounted(() => {
   background: rgba(240, 185, 11, 0.15);
   border-color: rgba(240, 185, 11, 0.45);
   color: #f0b90b;
+}
+.market-block {
+  margin-bottom: 16px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #2b3139;
+  background: #13161a;
+}
+.market-block__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.market-block__title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #848e9c;
+}
+.btn-refresh {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #2b3139;
+  background: #1e2329;
+  color: #eaecef;
+  cursor: pointer;
+  font-size: 16px;
+}
+.btn-refresh:disabled {
+  opacity: 0.45;
+}
+.market-hint {
+  margin: 0;
+  font-size: 12px;
+  color: #848e9c;
+}
+.market-foot {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: #5e6673;
+  line-height: 1.45;
+}
+.market-foot strong {
+  color: #f0b90b;
+}
+.market-full-link {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #f0b90b;
+  text-decoration: none;
+}
+.market-full-link:hover {
+  text-decoration: underline;
+}
+.market-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 520px) {
+  .market-cols {
+    grid-template-columns: 1fr;
+  }
+}
+.market-col__title {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.market-col__title--low {
+  color: #0ecb81;
+}
+.market-col__title--high {
+  color: #f6465d;
+}
+.market-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.market-row {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  grid-template-rows: auto auto;
+  gap: 2px 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #2b3139;
+  background: #1e2329;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.market-row:hover {
+  border-color: rgba(240, 185, 11, 0.45);
+  background: #252a31;
+}
+.market-row__rank {
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: #848e9c;
+}
+.market-row__price {
+  font-size: 13px;
+  font-weight: 700;
+  color: #eaecef;
+}
+.market-row__meta {
+  grid-column: 2;
+  font-size: 10px;
+  color: #848e9c;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .card-title {
   margin: 0 0 12px;

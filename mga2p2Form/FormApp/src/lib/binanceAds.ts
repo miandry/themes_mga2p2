@@ -1,5 +1,5 @@
 import { apiUrl } from '@/lib/apiUrl';
-import type { BinanceAdsResponse } from '@/types/binanceAds';
+import type { BinanceAdsResponse, BinanceMarketPricesResponse } from '@/types/binanceAds';
 
 export async function fetchBinanceAds(params: {
   page?: number;
@@ -93,6 +93,47 @@ export interface UpdateBinanceAdPriceResponse {
   message?: string;
   error?: string;
   ad?: import('@/types/binanceAds').BinanceAdRow;
+}
+
+export async function fetchBinanceAdMarketPrices(params: {
+  asset: string;
+  fiat: string;
+  tradeType: string;
+  advNo?: string;
+  pages?: number;
+}): Promise<BinanceMarketPricesResponse> {
+  const qs = new URLSearchParams();
+  qs.set('asset', params.asset.trim());
+  qs.set('fiat', params.fiat.trim());
+  qs.set('tradeType', params.tradeType.trim());
+  if (params.advNo?.trim()) qs.set('adv_no', params.advNo.trim());
+  if (params.pages != null) qs.set('pages', String(params.pages));
+
+  const res = await fetch(apiUrl(`mga2p2-form/api/binance/ads/market-prices?${qs.toString()}`), {
+    credentials: 'same-origin',
+  });
+
+  let body: BinanceMarketPricesResponse = {
+    data: [],
+    highest: [],
+    lowest: [],
+    total: 0,
+    searchTradeType: '',
+    source: 'none',
+  };
+
+  try {
+    body = (await res.json()) as BinanceMarketPricesResponse;
+  }
+  catch {
+    throw new Error(res.ok ? 'Réponse invalide' : `HTTP ${res.status}`);
+  }
+
+  if (!res.ok && body.error) {
+    throw new Error(body.error);
+  }
+
+  return body;
 }
 
 export async function updateBinanceAdPrice(params: {

@@ -71,6 +71,14 @@
           </RouterLink>
           <RouterLink
             class="form-nav-link"
+            to="/prix-concurrents"
+            active-class="form-nav-link--active"
+            @click="closeNav"
+          >
+            Prix concurrents
+          </RouterLink>
+          <RouterLink
+            class="form-nav-link"
             to="/settings/mobile-ussd"
             active-class="form-nav-link--active"
             @click="closeNav"
@@ -91,6 +99,7 @@
           <RouterLink class="hdr-link" to="/receipt" active-class="hdr-link--active">Reçu</RouterLink>
           <RouterLink class="hdr-link" to="/ordres-achat" active-class="hdr-link--active">Ordres achat</RouterLink>
           <RouterLink class="hdr-link" to="/annonces" active-class="hdr-link--active">Annonces</RouterLink>
+          <RouterLink class="hdr-link" to="/prix-concurrents" active-class="hdr-link--active">Prix P2P</RouterLink>
           <RouterLink class="hdr-link" to="/settings/mobile-ussd" active-class="hdr-link--active">USSD</RouterLink>
           <a class="hdr-link hdr-link--ext" :href="p2pUrl">P2P</a>
         </nav>

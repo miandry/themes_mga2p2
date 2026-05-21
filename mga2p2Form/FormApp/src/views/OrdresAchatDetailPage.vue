@@ -119,6 +119,26 @@
         </ul>
       </section>
 
+      <section v-if="statusActions.length" class="card actions">
+        <h3 class="card-title">Changer le statut</h3>
+        <p class="hint">Actions Binance C2C pour l'ordre <strong>{{ order.statusLabel }}</strong>.</p>
+        <div class="btn-row">
+          <button
+            v-for="opt in statusActions"
+            :key="opt.action"
+            type="button"
+            class="btn"
+            :class="btnClass(opt.variant)"
+            :disabled="actionLoading === opt.action"
+            @click="runStatusAction(opt)"
+          >
+            {{ actionLoading === opt.action ? 'En cours…' : opt.label }}
+          </button>
+        </div>
+        <p v-if="actionError" class="err-inline">{{ actionError }}</p>
+        <p v-if="actionSuccess" class="copy-hint">{{ actionSuccess }}</p>
+      </section>
+
       <section class="card actions">
         <h3 class="card-title">Actions</h3>
         <div class="btn-row">
@@ -139,7 +159,10 @@ import { fetchBuyOrderByNumber, type BinanceOrderRow } from '@/lib/binance';
 import { cacheOrdresAchat, getOrdreAchat } from '@/lib/ordresAchatCache';
 import { fetchOrderMgaByMontantInt } from '@/lib/orderMgaApi';
 import type { OrderMgaRow } from '@/types/orderMga';
+import { executeC2cOrderAction } from '@/lib/c2cOrderAction';
+import type { C2cOrderActionId } from '@/lib/c2cOrderAction';
 import {
+  availableC2cOrderActions,
   displayFiat,
   formatAmountLine,
   formatCreated,
@@ -149,6 +172,7 @@ import {
   sanitizeDisplayText,
   statusBadgeClass,
   totalPriceInteger,
+  type C2cOrderActionOption,
 } from '@/lib/ordresAchatDisplay';
 
 const route = useRoute();
@@ -162,8 +186,15 @@ const mgaSearchLoading = ref(false);
 const mgaSearchError = ref('');
 const mgaSearched = ref(false);
 const mgaMatches = ref<OrderMgaRow[]>([]);
+const actionLoading = ref<C2cOrderActionId | ''>('');
+const actionError = ref('');
+const actionSuccess = ref('');
 
 const showMgaMatch = computed(() => order.value != null && isOpenC2cOrder(order.value.status));
+
+const statusActions = computed(() =>
+  order.value ? availableC2cOrderActions(order.value.status) : [],
+);
 
 const montantIntLabel = computed(() => {
   if (!order.value) return '—';
@@ -230,6 +261,35 @@ async function searchMgaOrders() {
   }
 }
 
+function btnClass(variant: C2cOrderActionOption['variant']): string {
+  if (variant === 'primary') return 'btn--primary';
+  if (variant === 'success') return 'btn--success';
+  if (variant === 'danger') return 'btn--danger';
+  return '';
+}
+
+async function runStatusAction(opt: C2cOrderActionOption) {
+  if (!order.value || actionLoading.value) return;
+  const msg = `${opt.label} ?\n\n${opt.description}`;
+  if (!window.confirm(msg)) return;
+
+  actionLoading.value = opt.action;
+  actionError.value = '';
+  actionSuccess.value = '';
+
+  try {
+    const res = await executeC2cOrderAction(order.value.orderNumber, opt.action);
+    actionSuccess.value = res.message || 'Statut mis à jour.';
+    await load();
+  }
+  catch (e: unknown) {
+    actionError.value = e instanceof Error ? e.message : 'Échec de l\'action';
+  }
+  finally {
+    actionLoading.value = '';
+  }
+}
+
 async function copyOrderNumber() {
   if (!order.value?.orderNumber) return;
   const text = order.value.orderNumber;
@@ -246,6 +306,8 @@ watch(order, () => {
   mgaMatches.value = [];
   mgaSearched.value = false;
   mgaSearchError.value = '';
+  actionError.value = '';
+  actionSuccess.value = '';
 });
 
 onMounted(() => {
@@ -399,6 +461,24 @@ onMounted(() => {
   color: #f0b90b;
 }
 .btn--primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn--success {
+  border-color: rgba(14, 203, 129, 0.45);
+  background: rgba(14, 203, 129, 0.12);
+  color: #0ecb81;
+}
+.btn--success:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn--danger {
+  border-color: rgba(246, 70, 93, 0.45);
+  background: rgba(246, 70, 93, 0.1);
+  color: #f6465d;
+}
+.btn--danger:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

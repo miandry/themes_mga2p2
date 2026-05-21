@@ -1,4 +1,7 @@
 import type { BinanceOrderRow, C2COrderStatus } from '@/lib/binance';
+import type { C2cOrderActionId } from '@/lib/c2cOrderAction';
+
+export type { C2cOrderActionId };
 
 /** Hide banned terms in UI (API may still return them). */
 export function sanitizeDisplayText(value: string | null | undefined): string {
@@ -97,4 +100,53 @@ const ACTIVE_C2C: C2COrderStatus[] = [
 /** True when the external order is still open (not completed / cancelled). */
 export function isOpenC2cOrder(status: C2COrderStatus): boolean {
   return ACTIVE_C2C.includes(status);
+}
+
+export interface C2cOrderActionOption {
+  action: C2cOrderActionId;
+  label: string;
+  description: string;
+  variant: 'primary' | 'success' | 'danger';
+}
+
+/** Binance C2C actions available for the current order status. */
+export function availableC2cOrderActions(status: C2COrderStatus): C2cOrderActionOption[] {
+  switch (status) {
+    case 'PENDING':
+    case 'TRADING':
+      return [
+        {
+          action: 'mark_paid',
+          label: 'Marquer fiat payé',
+          description: 'Confirmer que le paiement fiat a été envoyé (markOrderAsPaid).',
+          variant: 'primary',
+        },
+        {
+          action: 'cancel',
+          label: 'Annuler l\'ordre',
+          description: 'Annuler cet ordre tant qu\'il est encore en cours.',
+          variant: 'danger',
+        },
+      ];
+    case 'BUYER_PAYED':
+      return [
+        {
+          action: 'release',
+          label: 'Libérer crypto',
+          description: 'Libérer les actifs numériques après réception du paiement (vendeur).',
+          variant: 'success',
+        },
+      ];
+    case 'DISTRIBUTING':
+      return [
+        {
+          action: 'release',
+          label: 'Libérer crypto',
+          description: 'Finaliser la libération des actifs.',
+          variant: 'success',
+        },
+      ];
+    default:
+      return [];
+  }
 }
