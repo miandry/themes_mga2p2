@@ -9,21 +9,45 @@ export const MGA2P2_FORM_API_LOGOUT = 'mga2p2-form/api/logout';
 export interface FormSessionUser {
   uid: number;
   name: string;
+  roles?: string[];
+  is_administrator?: boolean;
 }
 
 export const sessionChecked = ref(false);
 export const loggedIn = ref(false);
 export const sessionUser = shallowRef<FormSessionUser | null>(null);
+export const isFormAdministrator = ref(false);
+
+/** Route names restricted to Drupal administrator role. */
+export const FORM_ADMIN_ROUTE_NAMES = new Set([
+  'annonces',
+  'annonces-detail',
+  'prix-concurrents',
+  'ordres-achat',
+  'ordres-achat-detail',
+]);
+
+function applyUser(user: FormSessionUser | null | undefined): void {
+  sessionUser.value = user ?? null;
+  isFormAdministrator.value = !!user?.is_administrator;
+}
+
+export function canAccessFormRoute(routeName: string | symbol | null | undefined): boolean {
+  if (routeName == null || routeName === '') return true;
+  const name = String(routeName);
+  if (!FORM_ADMIN_ROUTE_NAMES.has(name)) return true;
+  return isFormAdministrator.value;
+}
 
 export async function fetchSession(): Promise<void> {
   try {
     const r = await fetch(apiUrl(MGA2P2_FORM_API_SESSION), { credentials: 'same-origin' });
     const j = (await r.json()) as { logged_in?: boolean; user?: FormSessionUser };
     loggedIn.value = !!j.logged_in;
-    sessionUser.value = j.user ?? null;
+    applyUser(j.user);
   } catch {
     loggedIn.value = false;
-    sessionUser.value = null;
+    applyUser(null);
   } finally {
     sessionChecked.value = true;
   }
@@ -49,7 +73,7 @@ export async function loginWithPassword(
     return { ok: false, error: j.error || 'Connexion refusée' };
   }
   loggedIn.value = true;
-  sessionUser.value = j.user ?? null;
+  applyUser(j.user);
   sessionChecked.value = true;
   return { ok: true };
 }
@@ -62,6 +86,6 @@ export async function logoutSession(): Promise<void> {
     });
   } finally {
     loggedIn.value = false;
-    sessionUser.value = null;
+    applyUser(null);
   }
 }

@@ -11,7 +11,7 @@ import BinanceAdsPage from './views/BinanceAdsPage.vue';
 import BinanceAdsDetailPage from './views/BinanceAdsDetailPage.vue';
 import PrixConcurrentsPage from './views/PrixConcurrentsPage.vue';
 import FormLoginPage from './views/FormLoginPage.vue';
-import { sessionChecked, loggedIn, fetchSession } from './lib/formSession';
+import { sessionChecked, loggedIn, fetchSession, canAccessFormRoute } from './lib/formSession';
 
 const router = createRouter({
   history: createWebHistory('/form'),
@@ -31,7 +31,7 @@ const router = createRouter({
     { path: '/annonces/:advNo', name: 'annonces-detail', component: BinanceAdsDetailPage },
     { path: '/annonces', name: 'annonces', component: BinanceAdsPage },
     { path: '/prix-concurrents', name: 'prix-concurrents', component: PrixConcurrentsPage },
-    { path: '/binance-orders', redirect: '/ordres-achat' },
+    { path: '/binance-orders', redirect: { name: 'ordres-achat' } },
     { path: '/:pathMatch(.*)*', redirect: '/orders' },
   ],
 });
@@ -45,6 +45,9 @@ router.beforeEach(async (to) => {
     return { name: 'form-login', query: { redirect: to.fullPath } };
   }
   if (loggedIn.value && isLogin) {
+    return { path: '/orders' };
+  }
+  if (loggedIn.value && !canAccessFormRoute(to.name)) {
     return { path: '/orders' };
   }
   return true;

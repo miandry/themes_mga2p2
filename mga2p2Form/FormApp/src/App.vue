@@ -54,6 +54,7 @@
             Reçu (scan)
           </RouterLink>
           <RouterLink
+            v-if="isFormAdministrator"
             class="form-nav-link"
             to="/ordres-achat"
             active-class="form-nav-link--active"
@@ -62,6 +63,7 @@
             Ordres achat
           </RouterLink>
           <RouterLink
+            v-if="isFormAdministrator"
             class="form-nav-link"
             to="/annonces"
             active-class="form-nav-link--active"
@@ -70,6 +72,7 @@
             Annonces
           </RouterLink>
           <RouterLink
+            v-if="isFormAdministrator"
             class="form-nav-link"
             to="/prix-concurrents"
             active-class="form-nav-link--active"
@@ -85,7 +88,7 @@
           >
             Codes USSD
           </RouterLink>
-          <a class="form-nav-link form-nav-link--ext" :href="p2pUrl">App P2P</a>
+          <a v-if="isFormAdministrator" class="form-nav-link form-nav-link--ext" :href="p2pUrl">App P2P</a>
         </nav>
         <div class="form-sidebar__foot">
           <p class="form-sidebar__user">{{ sessionUser?.name }}</p>
@@ -97,11 +100,11 @@
         <nav class="app-hdr__nav" aria-label="Navigation">
           <RouterLink class="hdr-link" to="/orders" active-class="hdr-link--active">Commandes</RouterLink>
           <RouterLink class="hdr-link" to="/receipt" active-class="hdr-link--active">Reçu</RouterLink>
-          <RouterLink class="hdr-link" to="/ordres-achat" active-class="hdr-link--active">Ordres achat</RouterLink>
-          <RouterLink class="hdr-link" to="/annonces" active-class="hdr-link--active">Annonces</RouterLink>
-          <RouterLink class="hdr-link" to="/prix-concurrents" active-class="hdr-link--active">Prix P2P</RouterLink>
+          <RouterLink v-if="isFormAdministrator" class="hdr-link" to="/ordres-achat" active-class="hdr-link--active">Ordres achat</RouterLink>
+          <RouterLink v-if="isFormAdministrator" class="hdr-link" to="/annonces" active-class="hdr-link--active">Annonces</RouterLink>
+          <RouterLink v-if="isFormAdministrator" class="hdr-link" to="/prix-concurrents" active-class="hdr-link--active">Prix P2P</RouterLink>
           <RouterLink class="hdr-link" to="/settings/mobile-ussd" active-class="hdr-link--active">USSD</RouterLink>
-          <a class="hdr-link hdr-link--ext" :href="p2pUrl">P2P</a>
+          <a v-if="isFormAdministrator" class="hdr-link hdr-link--ext" :href="p2pUrl">P2P</a>
         </nav>
         <div class="app-hdr__right">
           <span class="app-hdr__user">{{ sessionUser?.name }}</span>
@@ -123,7 +126,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { apiUrl } from '@/lib/apiUrl';
-import { loggedIn, sessionUser, logoutSession } from '@/lib/formSession';
+import { loggedIn, sessionUser, isFormAdministrator, logoutSession } from '@/lib/formSession';
 
 const route = useRoute();
 const router = useRouter();
