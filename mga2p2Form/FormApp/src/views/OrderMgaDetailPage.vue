@@ -117,6 +117,15 @@
           aria-hidden="true"
           @change="onPaymentProofChosen"
         />
+        <input
+          ref="changeProofInputRef"
+          type="file"
+          class="proof-file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          tabindex="-1"
+          aria-hidden="true"
+          @change="onChangeProofChosen"
+        />
         <div class="btn-row">
           <button
             v-if="rowStatus(order) !== 'paye'"
@@ -126,6 +135,15 @@
             @click="openPaymentProofPicker"
           >
             Marquer payé
+          </button>
+          <button
+            v-if="order.payment_proof_url"
+            type="button"
+            class="btn btn--change-img"
+            :disabled="saving"
+            @click="openChangeProofPicker"
+          >
+            {{ saving ? '…' : 'Changer l\'image' }}
           </button>
           <button
             v-if="rowStatus(order) !== 'archive'"
@@ -180,6 +198,7 @@ const pushBusy = ref(false);
 const pushHint = ref('');
 const pushOptedIn = ref(isOrderPushOptedIn());
 const proofInputRef = ref<HTMLInputElement | null>(null);
+const changeProofInputRef = ref<HTMLInputElement | null>(null);
 const nowSec = ref(Math.floor(Date.now() / 1000));
 let tick: ReturnType<typeof setInterval> | null = null;
 
@@ -256,6 +275,43 @@ function formatFileSize(bytes: number): string {
 function openPaymentProofPicker() {
   if (!order.value || saving.value) return;
   proofInputRef.value?.click();
+}
+
+function openChangeProofPicker() {
+  if (!order.value || saving.value) return;
+  changeProofInputRef.value?.click();
+}
+
+async function onChangeProofChosen(ev: Event) {
+  const el = ev.target as HTMLInputElement;
+  const f = el.files?.[0];
+  el.value = '';
+  if (!f || !order.value || saving.value) return;
+  if (
+    !window.confirm(
+      `Remplacer l'image de la commande #${order.value.nid} ?\n\n${f.name} (${formatFileSize(f.size)})`,
+    )
+  ) {
+    return;
+  }
+  saving.value = true;
+  saveError.value = '';
+  try {
+    const fd = new FormData();
+    fd.append('image', f);
+    const r = await fetch(apiUrl(`mga2p2-form/api/order-mga/${order.value.nid}/update-proof`), {
+      method: 'POST',
+      body: fd,
+      credentials: 'same-origin',
+    });
+    const j = await parseJsonResponse(r);
+    if (!r.ok) throw new Error((j as { error?: string }).error || r.statusText);
+    await load();
+  } catch (e: unknown) {
+    saveError.value = e instanceof Error ? e.message : 'Mise à jour impossible';
+  } finally {
+    saving.value = false;
+  }
 }
 
 async function onPaymentProofChosen(ev: Event) {
@@ -621,6 +677,11 @@ onUnmounted(() => {
   border-color: rgba(14, 203, 129, 0.45);
   background: rgba(14, 203, 129, 0.12);
   color: #0ecb81;
+}
+.btn--change-img {
+  border-color: rgba(240, 185, 11, 0.35);
+  background: rgba(240, 185, 11, 0.08);
+  color: #f0b90b;
 }
 .btn--archive {
   border-color: #3d4f5c;

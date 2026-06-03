@@ -198,7 +198,7 @@
               Orange
             </button>
             <button
-              v-if="rowStatus(row) !== 'paye'"
+              v-if="isFormAdministrator && rowStatus(row) !== 'paye'"
               type="button"
               class="act act--pay"
               :disabled="markPayeBusyNid !== null"
@@ -235,6 +235,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { apiUrl } from '@/lib/apiUrl';
 import type { OrderMgaRow } from '@/types/orderMga';
+import { isFormAdministrator } from '@/lib/formSession';
 import {
   isOrderPushOptedIn,
   registerOrderMgaWebPush,

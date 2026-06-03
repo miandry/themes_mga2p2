@@ -481,9 +481,9 @@ function parseDuplicatePayload(j: unknown): DuplicateModalPayload | null {
   };
 }
 
-async function checkDuplicate(filename: string): Promise<DuplicateModalPayload | null> {
+async function checkDuplicate(filename: string, montant: string): Promise<DuplicateModalPayload | null> {
   const dupR = await fetch(
-    apiUrl(`mga2p2/form-api/receipt-duplicate?filename=${encodeURIComponent(filename)}`),
+    apiUrl(`mga2p2/form-api/receipt-duplicate?filename=${encodeURIComponent(filename)}&montant=${encodeURIComponent(montant)}`),
     { credentials: 'same-origin' },
   );
   const dupJ = await parseJsonResponse(dupR);
@@ -590,10 +590,10 @@ async function runSave() {
   saveNotice.value = '';
   duplicateJustCopied.value = false;
   try {
-    const dup = await checkDuplicate(extractedPreview.value.filename);
+    const dup = await checkDuplicate(extractedPreview.value.filename, formMontant.value);
     if (dup) {
       duplicateModal.value = dup;
-      error.value = 'Doublon détecté : ce nom de fichier existe déjà. Utilisez une autre image.';
+      error.value = 'Doublon détecté : même nom de fichier et même montant déjà enregistrés.';
       return;
     }
     await executeSave();
