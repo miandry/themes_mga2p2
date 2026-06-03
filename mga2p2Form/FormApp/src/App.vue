@@ -46,6 +46,7 @@
             Commandes
           </RouterLink>
           <RouterLink
+            v-if="isFormAdministrator"
             class="form-nav-link"
             to="/receipt"
             active-class="form-nav-link--active"
@@ -99,7 +100,7 @@
       <header v-if="!narrow" class="app-hdr">
         <nav class="app-hdr__nav" aria-label="Navigation">
           <RouterLink class="hdr-link" to="/orders" active-class="hdr-link--active">Commandes</RouterLink>
-          <RouterLink class="hdr-link" to="/receipt" active-class="hdr-link--active">Reçu</RouterLink>
+          <RouterLink v-if="isFormAdministrator" class="hdr-link" to="/receipt" active-class="hdr-link--active">Reçu</RouterLink>
           <RouterLink v-if="isFormAdministrator" class="hdr-link" to="/ordres-achat" active-class="hdr-link--active">Ordres achat</RouterLink>
           <RouterLink v-if="isFormAdministrator" class="hdr-link" to="/annonces" active-class="hdr-link--active">Annonces</RouterLink>
           <RouterLink v-if="isFormAdministrator" class="hdr-link" to="/prix-concurrents" active-class="hdr-link--active">Prix P2P</RouterLink>

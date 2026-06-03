@@ -560,13 +560,18 @@ async function executeSave(): Promise<void> {
     const jRec = await parseJsonResponse(rRec);
     if (rRec.status === 409 && (jRec as { duplicate?: boolean }).duplicate) {
       const dup = parseDuplicatePayload(jRec);
-      if (dup) {
+      if (
+        dup &&
+        sameField(dup.first_montant, formMontant.value) &&
+        sameField(dup.first_name, formName.value)
+      ) {
         duplicateModal.value = dup;
+        error.value =
+          (jRec as { error?: string }).error?.trim() ||
+          'Doublon exact : même fichier, même montant et même nom. Enregistrement bloqué.';
+        return;
       }
-      error.value =
-        (jRec as { error?: string }).error?.trim() ||
-        'Historique reçus : doublon (même fichier). Utilisez une autre image.';
-      return;
+      // Same filename but different fields — allow the save to proceed.
     }
   }
   catch {

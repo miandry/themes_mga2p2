@@ -20,6 +20,7 @@ export const isFormAdministrator = ref(false);
 
 /** Route names restricted to Drupal administrator role. */
 export const FORM_ADMIN_ROUTE_NAMES = new Set([
+  'receipt',
   'annonces',
   'annonces-detail',
   'prix-concurrents',
