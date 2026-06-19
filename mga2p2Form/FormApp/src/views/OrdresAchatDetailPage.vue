@@ -121,28 +121,35 @@
 
       <section v-if="statusActions.length" class="card actions">
         <h3 class="card-title">Changer le statut</h3>
-        <p class="hint">Actions Binance C2C pour l'ordre <strong>{{ order.statusLabel }}</strong>.</p>
+        <p class="hint-warning">
+          ⚠️ Les actions C2C (marquer payé, libérer, annuler) nécessitent un accès marchand Binance.
+          Ouvrez l'ordre directement sur Binance pour effectuer ces actions.
+        </p>
         <div class="btn-row">
-          <button
-            v-for="opt in statusActions"
-            :key="opt.action"
-            type="button"
-            class="btn"
-            :class="btnClass(opt.variant)"
-            :disabled="actionLoading === opt.action"
-            @click="runStatusAction(opt)"
+          <a
+            :href="binanceOrderUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn btn--binance"
           >
-            {{ actionLoading === opt.action ? 'En cours…' : opt.label }}
-          </button>
+            🔗 Ouvrir dans Binance
+          </a>
         </div>
-        <p v-if="actionError" class="err-inline">{{ actionError }}</p>
-        <p v-if="actionSuccess" class="copy-hint">{{ actionSuccess }}</p>
+        <p class="hint-sub">Vous devez être connecté sur binance.com dans votre navigateur.</p>
       </section>
 
       <section class="card actions">
         <h3 class="card-title">Actions</h3>
         <div class="btn-row">
           <button type="button" class="btn" @click="copyOrderNumber">Copier le n° ordre</button>
+          <a
+            :href="binanceOrderUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn btn--binance"
+          >
+            🔗 Binance
+          </a>
         </div>
         <p v-if="copyHint" class="copy-hint">{{ copyHint }}</p>
       </section>
@@ -191,6 +198,15 @@ const actionError = ref('');
 const actionSuccess = ref('');
 
 const showMgaMatch = computed(() => order.value != null && isOpenC2cOrder(order.value.status));
+
+const binanceOrderUrl = computed(() => {
+  if (!order.value) return 'https://c2c.binance.com';
+  const params = new URLSearchParams({
+    orderNo: order.value.orderNumber,
+    createdAt: String(order.value.createTime),
+  });
+  return `https://c2c.binance.com/en/fiatOrderDetail?${params.toString()}`;
+});
 
 const statusActions = computed(() =>
   order.value ? availableC2cOrderActions(order.value.status) : [],
@@ -278,7 +294,7 @@ async function runStatusAction(opt: C2cOrderActionOption) {
   actionSuccess.value = '';
 
   try {
-    const res = await executeC2cOrderAction(order.value.orderNumber, opt.action);
+    const res = await executeC2cOrderAction(order.value.orderNumber, opt.action, order.value.paymentMethod);
     actionSuccess.value = res.message || 'Statut mis à jour.';
     await load();
   }
@@ -546,6 +562,28 @@ onMounted(() => {
   margin: 10px 0 0;
   font-size: 12px;
   color: #0ecb81;
+}
+.hint-warning {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #f0b90b;
+  background: rgba(240, 185, 11, 0.08);
+  border: 1px solid rgba(240, 185, 11, 0.2);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+.hint-sub {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: #848e9c;
+}
+.btn--binance {
+  border-color: #f0b90b;
+  background: rgba(240, 185, 11, 0.15);
+  color: #f0b90b;
+  font-weight: 700;
+  text-decoration: none;
 }
 .dl {
   margin: 0;

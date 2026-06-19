@@ -6,17 +6,22 @@ export interface C2cOrderActionResponse {
   ok: boolean;
   message?: string;
   error?: string;
+  binance?: { code?: number; msg?: string };
 }
 
 export async function executeC2cOrderAction(
   orderNo: string,
   action: C2cOrderActionId,
+  payMethodName?: string,
 ): Promise<C2cOrderActionResponse> {
+  const payload: Record<string, unknown> = { orderNo: orderNo.trim(), action };
+  if (payMethodName) payload.payMethodName = payMethodName.trim();
+
   const res = await fetch(apiUrl('mga2p2-form/api/binance/c2c-order/action'), {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ orderNo: orderNo.trim(), action }),
+    body: JSON.stringify(payload),
   });
 
   let body: C2cOrderActionResponse = { ok: false };
@@ -28,7 +33,8 @@ export async function executeC2cOrderAction(
   }
 
   if (!res.ok || !body.ok) {
-    throw new Error(body.error || `HTTP ${res.status}`);
+    const detail = body.binance?.msg ? ` (Binance: ${body.binance.msg})` : '';
+    throw new Error((body.error || `HTTP ${res.status}`) + detail);
   }
 
   return body;
