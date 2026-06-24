@@ -71,29 +71,6 @@
           </div>
         </section>
 
-        <section v-if="topLow.length || topHigh.length" class="top-pairs">
-          <div v-if="topLow.length" class="top-col">
-            <h2 class="top-col__title top-col__title--low">5 plus bas</h2>
-            <ul class="top-list">
-              <li v-for="(row, i) in topLow" :key="'lo-' + row.advNo + i" class="top-item">
-                <span class="top-item__rank">{{ i + 1 }}</span>
-                <span class="top-item__price">{{ formatAdPrice(row.price) }}</span>
-                <span class="top-item__meta">{{ row.merchant }}</span>
-              </li>
-            </ul>
-          </div>
-          <div v-if="topHigh.length" class="top-col">
-            <h2 class="top-col__title top-col__title--high">5 plus hauts</h2>
-            <ul class="top-list">
-              <li v-for="(row, i) in topHigh" :key="'hi-' + row.advNo + i" class="top-item">
-                <span class="top-item__rank">{{ i + 1 }}</span>
-                <span class="top-item__price">{{ formatAdPrice(row.price) }}</span>
-                <span class="top-item__meta">{{ row.merchant }}</span>
-              </li>
-            </ul>
-          </div>
-        </section>
-
         <section class="list-section">
           <h2 class="list-section__title">Liste complète ({{ rows.length }}) · du plus haut au plus bas</h2>
           <div class="table-wrap">
@@ -469,70 +446,7 @@ onMounted(() => {
 .stat-card--avg .stat-card__val {
   color: #f0b90b;
 }
-.top-pairs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-@media (max-width: 600px) {
-  .top-pairs {
-    grid-template-columns: 1fr;
-  }
-}
-.top-col {
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px solid #2b3139;
-  background: #13161a;
-}
-.top-col__title {
-  margin: 0 0 10px;
-  font-size: 12px;
-  font-weight: 700;
-}
-.top-col__title--low {
-  color: #0ecb81;
-}
-.top-col__title--high {
-  color: #f6465d;
-}
-.top-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.top-item {
-  display: grid;
-  grid-template-columns: 24px 1fr;
-  grid-template-rows: auto auto;
-  gap: 2px 8px;
-  padding: 8px;
-  border-radius: 8px;
-  background: #1e2329;
-}
-.top-item__rank {
-  grid-row: 1 / span 2;
-  align-self: center;
-  font-weight: 800;
-  color: #848e9c;
-  font-size: 12px;
-}
-.top-item__price {
-  font-weight: 700;
-  color: #eaecef;
-  font-size: 13px;
-}
-.top-item__meta {
-  font-size: 10px;
-  color: #848e9c;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+
 .list-section__title {
   margin: 0 0 10px;
   font-size: 12px;

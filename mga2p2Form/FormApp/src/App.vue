@@ -92,6 +92,7 @@
           <a v-if="isFormAdministrator" class="form-nav-link form-nav-link--ext" :href="p2pUrl">App P2P</a>
         </nav>
         <div class="form-sidebar__foot">
+          <button type="button" class="form-nav-chat" @click="openChat">💬 Support / Chat</button>
           <p class="form-sidebar__user">{{ sessionUser?.name }}</p>
           <button type="button" class="form-nav-logout" @click="onLogout">Déconnexion</button>
         </div>
@@ -108,6 +109,7 @@
           <a v-if="isFormAdministrator" class="hdr-link hdr-link--ext" :href="p2pUrl">P2P</a>
         </nav>
         <div class="app-hdr__right">
+          <button type="button" class="app-hdr__chat" @click="openChat">💬 Support</button>
           <span class="app-hdr__user">{{ sessionUser?.name }}</span>
           <button type="button" class="app-hdr__out" @click="onLogout">Déconnexion</button>
         </div>
@@ -155,6 +157,14 @@ function toggleNav() {
 function closeNav() {
   if (narrow.value) {
     navOpen.value = false;
+  }
+}
+
+function openChat() {
+  closeNav();
+  const api = (window as unknown as { Tawk_API?: { maximize?: () => void } }).Tawk_API;
+  if (api?.maximize) {
+    api.maximize();
   }
 }
 
@@ -335,6 +345,23 @@ onUnmounted(() => {
   word-break: break-word;
 }
 
+.form-nav-chat {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(240, 185, 11, 0.3);
+  background: rgba(240, 185, 11, 0.07);
+  color: #f0b90b;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 10px;
+  text-align: left;
+}
+.form-nav-chat:hover {
+  background: rgba(240, 185, 11, 0.15);
+}
+
 .form-nav-logout {
   width: 100%;
   padding: 12px 14px;
@@ -403,6 +430,21 @@ onUnmounted(() => {
   font-size: 12px;
   color: #aeb4bc;
   font-weight: 600;
+}
+
+.app-hdr__chat {
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(240, 185, 11, 0.4);
+  background: rgba(240, 185, 11, 0.08);
+  color: #f0b90b;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.app-hdr__chat:hover {
+  background: rgba(240, 185, 11, 0.18);
 }
 
 .app-hdr__out {

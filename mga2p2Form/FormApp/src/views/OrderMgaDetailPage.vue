@@ -95,6 +95,14 @@
               <img :src="proofImgSrc(order.payment_proof_url)" alt="Preuve de paiement" class="proof-img" />
             </dd>
           </div>
+          <div v-if="isFormAdministrator && order.receipt_image_url" class="dl__row dl__row--block">
+            <dt>Image reçu <span class="admin-badge">Admin</span></dt>
+            <dd class="proof-dd">
+              <a :href="proofImgSrc(order.receipt_image_url)" target="_blank" rel="noopener">
+                <img :src="proofImgSrc(order.receipt_image_url)" alt="Image reçu scanné" class="proof-img" />
+              </a>
+            </dd>
+          </div>
           <div v-if="order.user_info" class="dl__row dl__row--block">
             <dt>Infos utilisateur</dt>
             <dd class="pre">{{ order.user_info }}</dd>
@@ -185,6 +193,7 @@ import {
   resyncOrderMgaWebPushIfOptedIn,
   unregisterOrderMgaWebPush,
 } from '@/lib/orderPush';
+import { isFormAdministrator } from '@/lib/formSession';
 
 const route = useRoute();
 const nid = computed(() => String(route.params.nid || '').replace(/\D/g, ''));
@@ -708,6 +717,18 @@ onUnmounted(() => {
   width: 0;
   height: 0;
   opacity: 0;
+}
+.admin-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(240, 185, 11, 0.15);
+  color: #f0b90b;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  vertical-align: middle;
 }
 .proof-dd {
   margin-top: 4px;

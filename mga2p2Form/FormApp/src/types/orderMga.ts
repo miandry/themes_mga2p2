@@ -20,4 +20,6 @@ export interface OrderMgaRow {
   receipt_filename?: string | null;
   /** Public URL path for field_image (payment proof); list + detail API */
   payment_proof_url?: string | null;
+  /** Receipt scan image (field_image_upload) — exposed only for admin users */
+  receipt_image_url?: string | null;
 }

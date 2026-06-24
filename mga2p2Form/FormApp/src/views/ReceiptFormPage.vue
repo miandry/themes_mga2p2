@@ -9,7 +9,7 @@
 
     <section class="card">
       <h2>Upload image</h2>
-      <p class="hint">JPEG, PNG ou WebP — max 8 Mo. Analysez l’image, complétez le formulaire, puis enregistrez.</p>
+      <p class="hint">JPEG, PNG ou WebP — max 8 Mo. Analysez l'image, complétez le formulaire, puis enregistrez.</p>
       <div
         class="drop-zone"
         :class="{ 'drop-zone--active': dropActive }"
@@ -33,22 +33,43 @@
         <button
           type="button"
           class="preview-btn"
-          aria-label="Agrandir l’aperçu"
+          aria-label="Agrandir l'aperçu"
           @click="previewLightboxOpen = true"
         >
           <img :src="previewUrl" alt="" class="preview" />
         </button>
-        <p class="preview-hint">Cliquer l’image pour l’afficher en grand.</p>
+        <p class="preview-hint">Cliquer l'image pour l'afficher en grand.</p>
       </div>
       <button type="button" class="primary" :disabled="!file || loadingAnalyze" @click="runAnalyze">
-        {{ loadingAnalyze ? 'Analyse de l’image…' : 'Analyser l’image' }}
+        {{ loadingAnalyze ? 'Analyse en cours...' : 'Analyser l\'image' }}
       </button>
       <p v-if="error" class="err">{{ error }}</p>
     </section>
 
+    <section v-if="candidates.length > 1" class="card candidates-card">
+      <h2>Plusieurs contacts détectés</h2>
+      <p class="hint">Choisissez le contact correspondant à cet ordre :</p>
+      <div class="candidates-list">
+        <button
+          v-for="(c, i) in candidates"
+          :key="i"
+          type="button"
+          class="candidate-btn"
+          :class="{ 'candidate-btn--active': selectedCandidate === i }"
+          @click="applyCandidate(i)"
+        >
+          <span class="candidate-phone">{{ c.phone }}</span>
+          <span class="candidate-name">{{ c.name }}</span>
+          <span v-if="inferPaymentTypeFromMgPhone(c.phone)" class="candidate-badge">
+            {{ inferPaymentTypeFromMgPhone(c.phone) === 'mvola' ? 'MVola' : 'Orange Money' }}
+          </span>
+        </button>
+      </div>
+    </section>
+
     <section v-if="extractedPreview" class="card preview-card">
       <h2>Saisie avant enregistrement</h2>
-      <p class="hint subtle">Les champs sont préremplis à partir de l’image ; vous pouvez les corriger.</p>
+      <p class="hint subtle">Les champs sont préremplis à partir de l'image ; vous pouvez les corriger.</p>
 
       <div class="form-grid">
         <label class="field">
@@ -85,7 +106,7 @@
         </label>
         <label class="field full">
           <span class="lbl">Banque / opérateur</span>
-          <input v-model="formBankName" type="text" class="inp" autocomplete="off" placeholder="Surcharge si besoin (sinon selon type de paiement à l’enregistrement)" />
+          <input v-model="formBankName" type="text" class="inp" autocomplete="off" placeholder="Surcharge si besoin (sinon selon type de paiement à l'enregistrement)" />
         </label>
         <label class="field full">
           <span class="lbl">Infos utilisateur</span>
@@ -120,7 +141,7 @@
       >
         <h3 id="dup-title" class="dup-title">Doublon (même nom de fichier image)</h3>
         <p class="dup-intro">
-          Cette image est déjà enregistrée dans l’historique
+          Cette image est déjà enregistrée dans l'historique
           <span class="mono">#{{ duplicateModal.first_id }}</span>
           — {{ formatDate(duplicateModal.first_created) }}.
         </p>
@@ -167,7 +188,7 @@
         </table>
         <p v-if="duplicateJustCopied" class="dup-note">
           Les champs montant, téléphone et nom du premier enregistrement ont été copiés dans le formulaire.
-          Le nom de fichier reste bloqué tant que vous n’utilisez pas une autre image (ou un autre nom de fichier).
+          Le nom de fichier reste bloqué tant que vous n'utilisez pas une autre image (ou un autre nom de fichier).
         </p>
         <div class="dup-actions">
           <button type="button" class="ghost" @click="closeDuplicateModal">Annuler</button>
@@ -260,6 +281,10 @@ function guessPaymentType(extracted: Record<string, unknown>): '' | 'mvola' | 'o
   return '';
 }
 
+type Candidate = { phone: string; name: string };
+const candidates = ref<Candidate[]>([]);
+const selectedCandidate = ref<number>(0);
+
 const file = ref<File | null>(null);
 const fileName = ref('');
 const previewUrl = ref('');
@@ -268,7 +293,7 @@ const loadingAnalyze = ref(false);
 const loadingSave = ref(false);
 const error = ref('');
 const saveNotice = ref('');
-const extractedPreview = ref<{ extracted: Record<string, unknown>; filename: string } | null>(null);
+const extractedPreview = ref<{ extracted: Record<string, unknown>; filename: string; fid?: number } | null>(null);
 
 const formMontant = ref('');
 const formPhone = ref('');
@@ -310,6 +335,19 @@ function resetForm() {
   formRemainMinutes.value = 20;
   formUserInfo.value = '';
   saveNotice.value = '';
+  candidates.value = [];
+  selectedCandidate.value = 0;
+}
+
+function applyCandidate(index: number) {
+  const c = candidates.value[index];
+  if (!c) return;
+  selectedCandidate.value = index;
+  formPhone.value = c.phone;
+  formName.value = c.name;
+  const inferred = inferPaymentTypeFromMgPhone(c.phone);
+  formPaymentType.value = inferred;
+  formBankName.value = inferred === 'mvola' ? 'MVola' : inferred === 'orange' ? 'Orange Money' : '';
 }
 
 function initFormFromExtracted(extracted: Record<string, unknown>) {
@@ -324,6 +362,18 @@ function initFormFromExtracted(extracted: Record<string, unknown>) {
   formPaymentType.value = guessPaymentType(extracted);
   formRemainMinutes.value = 20;
   formUserInfo.value = '';
+
+  // Load candidates from AI response
+  const raw = extracted.candidates;
+  if (Array.isArray(raw)) {
+    candidates.value = raw
+      .filter((c): c is Candidate => c && typeof c === 'object' && typeof c.phone === 'string' && typeof c.name === 'string')
+      .map(c => ({ phone: c.phone.trim(), name: c.name.trim() }))
+      .filter(c => c.phone !== '' && c.phone !== 'NOT_FOUND');
+  } else {
+    candidates.value = [];
+  }
+  selectedCandidate.value = 0;
 }
 
 function onPreviewLightboxEscape(e: KeyboardEvent) {
@@ -407,7 +457,7 @@ function applyBinanceSaveNotice(payload: unknown): void {
   if (status === 'ambiguous') {
     saveNotice.value =
       (typeof b.message === 'string' && b.message.trim()) ||
-      `Plusieurs ordres Binance (${b.candidates ?? '?'}) ont le même montant ; la référence n’a pas été modifiée.`;
+      `Plusieurs ordres Binance (${b.candidates ?? '?'}) ont le même montant ; la référence n'a pas été modifiée.`;
     return;
   }
   if (status === 'none') {
@@ -440,10 +490,11 @@ async function runAnalyze() {
     if (!r.ok) throw new Error((j as { error?: string }).error || r.statusText);
     const extracted = (j as { extracted?: Record<string, unknown> }).extracted;
     const fn = (j as { filename?: string }).filename ?? file.value.name;
+    const fid = (j as { fid?: number }).fid ?? undefined;
     if (!extracted || typeof extracted !== 'object') {
       throw new Error('Réponse sans champ « extracted ».');
     }
-    extractedPreview.value = { extracted, filename: fn };
+    extractedPreview.value = { extracted, filename: fn, fid };
     initFormFromExtracted(extracted);
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : 'Échec analyse';
@@ -497,13 +548,14 @@ function buildSavePayload():
       extracted: Record<string, unknown>;
       filename: string;
       form: Record<string, string | number>;
+      fid?: number;
     }
   | null {
   if (!extractedPreview.value) return null;
   const rm = Number.isFinite(formRemainMinutes.value)
     ? Math.min(600, Math.max(1, Math.floor(formRemainMinutes.value)))
     : 20;
-  return {
+  const payload: Record<string, unknown> = {
     extracted: extractedPreview.value.extracted,
     filename: extractedPreview.value.filename,
     form: {
@@ -518,6 +570,10 @@ function buildSavePayload():
       user_info: formUserInfo.value,
     },
   };
+  if (extractedPreview.value.fid) {
+    payload.fid = extractedPreview.value.fid;
+  }
+  return payload as { extracted: Record<string, unknown>; filename: string; form: Record<string, string | number>; fid?: number };
 }
 
 function closeDuplicateModal() {
@@ -920,7 +976,38 @@ onUnmounted(() => {
   opacity: 0.45;
   cursor: not-allowed;
 }
+.candidates-card { border-color: #f0b90b44; }
+.candidates-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.candidate-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #2b3139;
+  background: #13161a;
+  color: #eaecef;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+.candidate-btn:hover { border-color: #f0b90b; background: rgba(240,185,11,0.07); }
+.candidate-btn--active { border-color: #f0b90b; background: rgba(240,185,11,0.12); }
+.candidate-phone { font-weight: 700; font-size: 15px; color: #f0b90b; min-width: 130px; }
+.candidate-name { flex: 1; font-size: 14px; color: #eaecef; }
+.candidate-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(14,203,129,0.15);
+  color: #0ecb81;
+  white-space: nowrap;
+}
+
 @media (max-width: 560px) {
   .form-grid { grid-template-columns: 1fr; }
+  .candidate-btn { flex-wrap: wrap; }
+  .candidate-phone { min-width: auto; }
 }
 </style>
